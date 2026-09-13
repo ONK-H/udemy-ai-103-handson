@@ -30,7 +30,7 @@
 
 **B. Bicep（IaC）で作る**
 1. `deploy_bicep.azcli` の変数を置換し、`what-if` → `create` を実行。
-2. 出力（`foundryEndpoint` / `deploymentNameOut`）を控える。
+2. 出力（`projectEndpoint` / `deploymentNameOut`）を控える。`projectEndpoint` が `.env` の `PROJECT_ENDPOINT` に入る値（同時に出る `foundryEndpoint` はアカウント単位で別物）。
 
 > ⚠️ A と B は**同じ構成**を作ります。両方を試すなら、片方は `what-if`（プレビュー）までに留めると、同名リソースの重複・衝突を避けられます。
 

@@ -112,7 +112,9 @@ resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01
 }
 
 // 出力: 推論に使うエンドポイントとデプロイ名（.env に転記する）
-@description('Foundry リソースのエンドポイント。')
+@description('.env の PROJECT_ENDPOINT に入れる値。プロジェクト単位のエンドポイント（.../api/projects/<project>）。')
+output projectEndpoint string = project.properties.endpoints['AI Foundry API']
+@description('（参考）アカウント単位のエンドポイント。<resource>.cognitiveservices.azure.com 形式で、PROJECT_ENDPOINT には使えない別物。')
 output foundryEndpoint string = foundry.properties.endpoint
 @description('呼び出しに使うデプロイ名。')
 output deploymentNameOut string = deployment.name

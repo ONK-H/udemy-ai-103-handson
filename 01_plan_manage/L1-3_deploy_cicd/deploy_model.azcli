@@ -37,11 +37,20 @@ az cognitiveservices account update `
 
 # --- 3) Foundry project（子＝作業空間）を作成 --------------------------------
 #   --name はアカウント（Foundry リソース）名、--project-name がプロジェクト名。
+#   ⚠️ この出力の properties.endpoints の "AI Foundry API" が、.env の PROJECT_ENDPOINT に入れる値。
+#      形式: https://<resource-name>.services.ai.azure.com/api/projects/<project-name>
 az cognitiveservices account project create `
   --name $ACCOUNT `
   --resource-group $RG `
   --project-name $PROJECT `
   --location $LOCATION
+
+#   あとから取り直す場合（PROJECT_ENDPOINT 用）
+az cognitiveservices account project show `
+  --name $ACCOUNT `
+  --resource-group $RG `
+  --project-name $PROJECT `
+  --query 'properties.endpoints."AI Foundry API"' -o tsv
 
 # --- 4) どのモデルが、どの SKU で使えるかを確認（モデル名/バージョンは揮発情報）---
 #   出力の整形は az 組み込みの --query（JMESPath）を使う（jq などの外部ツール不要）。
@@ -70,7 +79,9 @@ az cognitiveservices account deployment show `
   --resource-group $RG `
   --query "properties.provisioningState" -o tsv
 
-# --- 7) 推論エンドポイントを取得（.env の PROJECT_ENDPOINT 等に転記）---------
+# --- 7) アカウント単位のエンドポイントを取得（参考）--------------------------
+#   ⚠️ これは <resource>.cognitiveservices.azure.com 形式の「アカウント」エンドポイント。
+#      .env の PROJECT_ENDPOINT には使えない（プロジェクト単位の値は手順3で取得する）。
 az cognitiveservices account show `
   --name $ACCOUNT `
   --resource-group $RG `
