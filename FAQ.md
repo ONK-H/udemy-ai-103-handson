@@ -61,7 +61,7 @@ az rest --method get `
 | `00_intro/L0-3_hello_foundry` | `gpt-5.4-nano` | `gpt-4.1-mini` |
 | `01_plan_manage/L1-1_model_selection` | `gpt-5.4` / `gpt-5.4-nano` | `gpt-5-mini` / `gpt-4.1-mini` |
 | `01_plan_manage/L1-4_quota_cost` | `gpt-5.4` | `gpt-5-mini` |
-| `01_plan_manage/L1-5_keyless_security` | `gpt-4.1` | `gpt-4.1-mini` |
+| `01_plan_manage/L1-5_keyless_security` | `gpt-5.4` | `gpt-5-mini` |
 | `01_plan_manage/L1-6_observability_tracing` | `gpt-4.1` | `gpt-4.1-mini` |
 | `01_plan_manage/L1-7_responsible_ai` | `gpt-4.1` | `gpt-4.1-mini` |
 | `02_genai_agents/L2-5_evaluate_rag` | `gpt-4.1`（採点役） | `gpt-4.1-mini` |

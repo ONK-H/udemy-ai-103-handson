@@ -10,7 +10,11 @@ main.py は Foundry プロジェクト経由だったが、こちらは Foundry 
 - 比較として「APIキーで呼ぶ」関数も用意。local auth を無効化(disableLocalAuth)した後は
   キー方式が 401 で失敗することを体感する（assign_role_disable_key.azcli 実行後に確認）。
 
-必要ロール: Foundry リソースに対する「Cognitive Services User」(直接推論用)。
+必要ロール: Foundry リソース(アカウント)スコープで、データアクションを持つロール。
+- 「Cognitive Services User」… Cognitive Services 全般のデータアクション。公式の推奨。
+- 「Foundry User」… こちらもアカウントスコープなら同じデータアクションを含む。
+- 「Cognitive Services OpenAI User」… OpenAI モデルだけに限定される。
+- 「Owner」「Contributor」では推論できない(データアクションを持たない)。
 """
 
 import os
@@ -23,7 +27,7 @@ load_dotenv()
 
 # 形式: https://<resource>.openai.azure.com/openai/v1/  (または .services.ai.azure.com/openai/v1/)
 BASE_URL = os.getenv("FOUNDRY_OPENAI_BASE_URL")
-MODEL = os.getenv("MODEL_DEPLOYMENT", "gpt-4.1")
+MODEL = os.getenv("MODEL_DEPLOYMENT", "gpt-5.4")
 API_KEY = os.getenv("FOUNDRY_API_KEY")  # 比較用(任意)。キーレスでは未設定でよい
 PROMPT = "あなたは何で認証されていますか？1文で。"
 
@@ -61,7 +65,9 @@ def main() -> None:
     try:
         print(call_keyless())
     except Exception as ex:
-        print(f"  失敗: {type(ex).__name__}: {ex} (403ならロール『Cognitive Services User』を確認)")
+        print(f"  失敗: {type(ex).__name__}: {ex}")
+        print("  → 403 Forbidden / 401 PermissionDenied なら、リソースに")
+        print("     『Cognitive Services User』を割り当てて数分待つ")
 
     if API_KEY:
         print("\n===== 方式B: APIキー (比較用) =====")
