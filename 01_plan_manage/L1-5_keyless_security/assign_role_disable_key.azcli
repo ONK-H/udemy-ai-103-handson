@@ -12,12 +12,24 @@ $MY_ID      = az ad signed-in-user show --query id -o tsv
 $FOUNDRY_ID = az cognitiveservices account show -n $FOUNDRY -g $RG --query id -o tsv
 $PROJECT_ID = "$FOUNDRY_ID/projects/$PROJECT"
 
-# 0) まず「いま自分に何が付いているか」を見る
+# 0) まず「このリソースに対して、いま自分に何が効いているか」を見る
 #    ⚠️ ロールは上位スコープから継承される。サブスクリプションやリソースグループに
 #       Foundry User が付いていれば、リソース/プロジェクトには何も付けなくても推論できる。
 #       「動かない」ときも「動く」ときも、まずここを見るのが切り分けの第一歩。
-az role assignment list --assignee $MY_ID --all `
-  --query "[?contains(roleDefinitionName,'Foundry') || contains(roleDefinitionName,'Cognitive')].{role:roleDefinitionName, scope:scope}" -o table
+#    ※ --scope + --include-inherited が要点。このリソースに効いている割り当てだけが、
+#       継承元（サブスクリプション / リソースグループ）も含めて並ぶ。
+#       --all だと他のリソースグループの割り当てまで全部出てきて、肝心の継承関係が埋もれる。
+az role assignment list --assignee $MY_ID --scope $FOUNDRY_ID --include-inherited `
+  --query "[].{role:roleDefinitionName, scope:scope}" -o table
+
+#    出力例（このリソースに Cognitive Services User がまだ無い状態）:
+#      Role          Scope
+#      ------------  ------------------------------------------------------
+#      Owner         /subscriptions/<sub>
+#      Foundry User  /subscriptions/<sub>
+#      Foundry User  /subscriptions/<sub>/resourceGroups/<rg>
+#    → Owner があっても推論はできない（コントロールプレーンのロールでデータアクションが無い）。
+#      動いているのは Foundry User がサブスクリプション/リソースグループに付いているから。
 
 # 1) データプレーン: プロジェクトに "Foundry User" を割り当て（main.py 用）
 #    ※ Foundry 系ロールは改称のロールアウト中。名前ではなく GUID で指定するのが安全
@@ -55,7 +67,8 @@ curl.exe -s -o NUL -w "%{http_code}`n" -H "Authorization: Bearer $ARM_TOKEN" "ht
 curl.exe -s -o NUL -w "%{http_code}`n" -H "Authorization: Bearer $AI_TOKEN" "https://$FOUNDRY.openai.azure.com/openai/v1/models"
 
 # 5) local auth(APIキー) を無効化 = キーレスを強制する（disableLocalAuth=true）
-#    ⚠️ これ以降キー方式は 401 になる。全利用側が Entra ID 認証へ移行済みであることを確認してから実行!
+#    ⚠️ これ以降キー方式は 403 AuthenticationTypeDisabled になる（反映は即時）。
+#       全利用側が Entra ID 認証へ移行済みであることを確認してから実行!
 az resource update --ids $FOUNDRY_ID --set properties.disableLocalAuth=true
 
 #    確認: disableLocalAuth が true になっているか

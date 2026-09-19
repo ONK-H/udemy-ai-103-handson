@@ -8,7 +8,8 @@ main.py は Foundry プロジェクト経由だったが、こちらは Foundry 
 - get_bearer_token_provider(DefaultAzureCredential(), "https://ai.azure.com/.default")
   が、呼び出しのたびに自動でトークンを供給する（= api_key にこれを渡す）。
 - 比較として「APIキーで呼ぶ」関数も用意。local auth を無効化(disableLocalAuth)した後は
-  キー方式が 401 で失敗することを体感する（assign_role_disable_key.azcli 実行後に確認）。
+  キー方式が 403 AuthenticationTypeDisabled で失敗することを体感する
+  （assign_role_disable_key.azcli 実行後に確認）。
 
 必要ロール: Foundry リソース(アカウント)スコープで、データアクションを持つロール。
 - 「Cognitive Services User」… Cognitive Services 全般のデータアクション。公式の推奨。
@@ -18,6 +19,12 @@ main.py は Foundry プロジェクト経由だったが、こちらは Foundry 
 """
 
 import os
+import sys
+
+# Windows でコンソール以外（リダイレクトやパイプ）に出力すると cp932 になり、
+# 絵文字や一部記号で UnicodeEncodeError になる。ここで落ちると下の except が
+# 拾ってしまい、認証は成功しているのに『401/403』の案内が出て紛らわしい。
+sys.stdout.reconfigure(errors="replace")
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
@@ -29,7 +36,10 @@ load_dotenv()
 BASE_URL = os.getenv("FOUNDRY_OPENAI_BASE_URL")
 MODEL = os.getenv("MODEL_DEPLOYMENT", "gpt-5.4")
 API_KEY = os.getenv("FOUNDRY_API_KEY")  # 比較用(任意)。キーレスでは未設定でよい
-PROMPT = "あなたは何で認証されていますか？1文で。"
+# モデルは「呼び出し側がどう認証したか」を知らない。認証方式そのものを聞くと
+# 毎回「分かりません」と返り、成功したのか失敗したのか画面上で紛らわしくなる。
+# ここで見たいのは「応答が返るかどうか」なので、短く安定して答えられる質問にする。
+PROMPT = "Entra ID のトークン認証と API キー認証の違いを1文で説明してください。"
 
 
 def call_keyless() -> str:
@@ -47,7 +57,7 @@ def call_keyless() -> str:
 
 
 def call_with_key() -> str:
-    """比較用: APIキー方式。local auth 無効化後は 401 になるはず。"""
+    """比較用: APIキー方式。local auth 無効化後は 403 になるはず。"""
     client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
     res = client.chat.completions.create(
         model=MODEL,
@@ -75,7 +85,9 @@ def main() -> None:
             print(call_with_key())
         except Exception as ex:
             print(f"  失敗: {type(ex).__name__}: {ex}")
-            print("  → disableLocalAuth を有効化済みなら、これは期待どおりの 401 です。")
+            print("  → disableLocalAuth を有効化済みなら、これは期待どおりの失敗です。")
+            print("     403 AuthenticationTypeDisabled:"
+                  " Key based authentication is disabled for this resource.")
     else:
         print("\n(FOUNDRY_API_KEY 未設定のため方式Bはスキップ。キーレス運用ではこれでOK)")
 

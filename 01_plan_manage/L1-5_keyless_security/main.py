@@ -15,6 +15,12 @@ APIキーを一切使わず、`az login` した ID（または Azure 上のマ�
 """
 
 import os
+import sys
+
+# Windows でコンソール以外（リダイレクトやパイプ）に出力すると cp932 になり、
+# 下の ✅ で UnicodeEncodeError になる。ここで落ちると except が拾ってしまい、
+# 接続は成功しているのに『401/403/404』の案内が出て紛らわしい。
+sys.stdout.reconfigure(errors="replace")
 
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
