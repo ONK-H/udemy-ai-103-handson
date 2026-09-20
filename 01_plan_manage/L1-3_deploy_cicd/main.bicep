@@ -78,6 +78,9 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2026-05-01' = {
     customSubDomainName: foundryName
     // キーレス強制（APIキー認証を無効化＝本講座の方針）
     disableLocalAuth: true
+    // 既存リソースに適用し直すとき、ARM がこの値を要求する
+    //（"PublicNetworkAccess is required for this resource." で失敗する）
+    publicNetworkAccess: 'Enabled'
   }
 }
 
