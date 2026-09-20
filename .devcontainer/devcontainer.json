@@ -20,7 +20,11 @@
         "git.blame.editorDecoration.enabled": false,
         "git.blame.statusBarItem.enabled": false,
         "workbench.startupEditor": "none",
-        "explorer.openEditors.visible": 0
+        "explorer.openEditors.visible": 0,
+        "python.analysis.diagnosticSeverityOverrides": {
+          "reportMissingImports": "none",
+          "reportMissingModuleSource": "none"
+        }
       }
     }
   },
