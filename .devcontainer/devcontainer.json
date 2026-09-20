@@ -2,14 +2,22 @@
   "name": "udemy-ai-103-handson (Python 3.11)",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
   "features": {
-    "ghcr.io/devcontainers/features/azure-cli:1": {}
+    "ghcr.io/devcontainers/features/azure-cli:1": {},
+    "ghcr.io/devcontainers/features/powershell:1": {}
   },
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "ms-azuretools.vscode-azureresourcegroups"
-      ]
+        "ms-azuretools.vscode-azureresourcegroups",
+        "ms-vscode.powershell"
+      ],
+      "settings": {
+        "editor.fontSize": 17,
+        "terminal.integrated.fontSize": 15,
+        "workbench.colorTheme": "Default Dark Modern",
+        "editor.minimap.enabled": false
+      }
     }
   },
   "postCreateCommand": "python -m pip install --upgrade pip"

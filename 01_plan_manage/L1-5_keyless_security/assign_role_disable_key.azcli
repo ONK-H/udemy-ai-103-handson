@@ -1,5 +1,6 @@
 # L1-5 実践 (3/3): ロール割り当て ＋ local auth 無効化（キーレス化の仕上げ）
-# ※ PowerShell 前提。1 行ずつ実行するのが分かりやすい。
+# ※ PowerShell (pwsh 7+) 前提。1 行ずつ実行するのが分かりやすい。
+#    Windows / macOS / Linux / GitHub Codespaces のいずれでも同じコマンドで動く。
 # ※ ロール割り当て・local auth 無効化には十分な権限（Owner / User Access Administrator 等）が必要。
 
 # --- 変数 (自分の環境に合わせて変更) ---
@@ -51,7 +52,7 @@ az role assignment create `
 
 # 3) 割り当て確認
 #    ⚠️ 反映は即時ではない。公式ガイダンスは「最初の呼び出しまで5分以上待つ」。
-az role assignment list --assignee $MY_ID --scope $FOUNDRY_ID -o table
+az role assignment list --assignee $MY_ID --scope $FOUNDRY_ID --include-inherited --query "[].{role:roleDefinitionName, scope:scope}" -o table
 
 # 4) 参考: トークンには「宛先(audience)」がある
 #    同じ ID で取ったトークンでも、宛先(スコープ)が違えば通らない。
@@ -61,13 +62,15 @@ $ARM_TOKEN = az account get-access-token --scope "https://management.azure.com/.
 $AI_TOKEN  = az account get-access-token --scope "https://ai.azure.com/.default" --query accessToken -o tsv
 
 # ARM 用トークンで推論エンドポイントを叩く → 401
-curl.exe -s -o NUL -w "%{http_code}`n" -H "Authorization: Bearer $ARM_TOKEN" "https://$FOUNDRY.openai.azure.com/openai/v1/models"
+(Invoke-WebRequest -SkipHttpErrorCheck -Uri "https://$FOUNDRY.openai.azure.com/openai/v1/models" `
+   -Headers @{ Authorization = "Bearer $ARM_TOKEN" }).StatusCode
 
 # Foundry 用トークンで同じエンドポイントを叩く → 200
-curl.exe -s -o NUL -w "%{http_code}`n" -H "Authorization: Bearer $AI_TOKEN" "https://$FOUNDRY.openai.azure.com/openai/v1/models"
+(Invoke-WebRequest -SkipHttpErrorCheck -Uri "https://$FOUNDRY.openai.azure.com/openai/v1/models" `
+   -Headers @{ Authorization = "Bearer $AI_TOKEN" }).StatusCode
 
 # 5) local auth(APIキー) を無効化 = キーレスを強制する（disableLocalAuth=true）
-#    ⚠️ これ以降キー方式は 403 AuthenticationTypeDisabled になる（反映は即時）。
+#    ⚠️ これ以降キー方式は 403 AuthenticationTypeDisabled になる（実測は即時。公式は「数分〜最大数時間」）。
 #       全利用側が Entra ID 認証へ移行済みであることを確認してから実行!
 az resource update --ids $FOUNDRY_ID --set properties.disableLocalAuth=true
 
@@ -78,7 +81,7 @@ az resource show --ids $FOUNDRY_ID --query "properties.disableLocalAuth"
 #    Set-AzCognitiveServicesAccount -ResourceGroupName $RG -Name $FOUNDRY -DisableLocalAuth $true
 #
 #    （組織全体に強制したい場合は Azure Policy
-#      「Foundry Tools resources should have key access disabled」をサブスクリプション/RG に適用する）
+#      「Azure AI Services resources should have key access disabled (disable local authentication)」を適用）
 
 # 6) キーを再生成して、いま手元にあるキーを失効させる
 #    ※ disableLocalAuth はサービス側でキー認証を拒否する設定。これとは別に、
