@@ -19,7 +19,7 @@ load_dotenv()
 
 SUBSCRIPTION_ID = os.getenv("AZURE_SUBSCRIPTION_ID")
 LOCATION = os.getenv("QUOTA_LOCATION", "eastus")
-API_VERSION = "2024-10-01"  # ※収録時に最新の api-version を確認
+API_VERSION = "2026-07-01"  # ※揮発情報。az provider show で現行の GA を確認する
 TIERS_API_VERSION = "2025-10-01-preview"  # quotaTiers は執筆時点でプレビュー
 
 # Model Capacities API 用 (任意)
