@@ -8,9 +8,11 @@
 // 認証はキーレス（Entra ID）を強制する（disableLocalAuth=true でローカルキー認証を無効化）。
 //
 // ⚠️ API バージョン・モデル名/バージョン・SKU は「執筆時点のスナップショット」。
-//    収録/利用時に `az cognitiveservices account list-models` 等で再確認すること。
+//    利用時に `az cognitiveservices account list-models` 等で再確認すること。
+//    API バージョンは 2026-05-01（GA）で確認済み。最新の一覧は次で取れる:
+//      az provider show -n Microsoft.CognitiveServices --query "resourceTypes[?resourceType=='accounts'].apiVersions[0:5]" -o tsv
 
-@description('Foundry リソース（親）の名前。サブドメインにも使われるため一意に。')
+@description('Foundry リソース（親）の名前。サブドメインにも使われるため「全世界で一意」。取得済みだと CustomDomainInUse で弾かれるので、末尾に自分用の英数字を足す。')
 param foundryName string
 
 @description('Foundry project（子）の名前。')
@@ -59,7 +61,7 @@ param capacity int = 10
 param contentFilterPolicyName string = 'Microsoft.DefaultV2'
 
 // 1) Foundry リソース（親）: kind=AIServices, キーレス強制, プロジェクト管理を有効化
-resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+resource foundry 'Microsoft.CognitiveServices/accounts@2026-05-01' = {
   name: foundryName
   location: location
   kind: 'AIServices'
@@ -80,7 +82,7 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
 }
 
 // 2) Foundry project（子＝作業空間）
-resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
+resource project 'Microsoft.CognitiveServices/accounts/projects@2026-05-01' = {
   parent: foundry
   name: projectName
   location: location
@@ -91,7 +93,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
 }
 
 // 3) モデルデプロイ（カタログのモデルを「呼べる状態」にし、デプロイ名を付ける）
-resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01-preview' = {
+resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2026-05-01' = {
   parent: foundry
   name: deploymentName
   sku: {

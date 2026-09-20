@@ -7,7 +7,8 @@
 
 # --- 0) 変数（自分の値に置き換える）-------------------------------------------
 $RG = "ai103-l1-3-rg"
-$ACCOUNT = "ai103l13foundry"          # Foundry リソース名（サブドメインにも使うため一意・小文字）
+$ACCOUNT = "ai103l13foundry"          # Foundry リソース名。サブドメインになるので「全世界で一意・小文字」
+                                      # ⚠️ 取得済みの名前だと CustomDomainInUse で弾かれる。末尾に自分用の英数字を足すこと
 $LOCATION = "eastus2"
 $PROJECT = "ai103-l13-proj"           # Foundry project 名
 $DEPLOYMENT = "chat"                  # 呼び出しに使うデプロイ名（model パラメータに渡す名前）
@@ -29,11 +30,21 @@ az cognitiveservices account create `
   --assign-identity
 
 # （任意・推奨）キーレス強制: ローカルキー認証を無効化（Entra ID のみ許可）
-az cognitiveservices account update `
+#   az cognitiveservices account update には disableLocalAuth を直接設定するオプションが無い
+#   （--api-properties は properties.apiProperties に入るだけで、キー認証は無効化されない）。
+#   そのため汎用の az resource update で properties.disableLocalAuth を設定する。
+#   （公式が一次手段として案内しているのは Azure PowerShell の
+#     Set-AzCognitiveServicesAccount -DisableLocalAuth $true、または Bicep/ARM の disableLocalAuth。
+#     az だけで完結させたい場合が下の書き方になる）
+az resource update `
+  --ids $(az cognitiveservices account show --name $ACCOUNT --resource-group $RG --query id -o tsv) `
+  --set properties.disableLocalAuth=true
+
+#   確認: true ならキー認証は無効（反映には数分〜数時間かかることがある）
+az cognitiveservices account show `
   --name $ACCOUNT `
   --resource-group $RG `
-  --custom-domain $ACCOUNT `
-  --api-properties disableLocalAuth=true
+  --query properties.disableLocalAuth -o tsv
 
 # --- 3) Foundry project（子＝作業空間）を作成 --------------------------------
 #   --name はアカウント（Foundry リソース）名、--project-name がプロジェクト名。

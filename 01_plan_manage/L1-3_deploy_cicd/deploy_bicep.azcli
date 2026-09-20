@@ -7,6 +7,8 @@
 
 $RG = "ai103-l1-3-rg"
 $LOCATION = "eastus2"
+# ⚠️ foundryName はサブドメインになるので「全世界で一意」。下の値のままだと
+#    CustomDomainInUse で弾かれる場合がある。末尾に自分用の英数字を足すこと。
 
 # 1) リソースグループ
 az group create --name $RG --location $LOCATION
