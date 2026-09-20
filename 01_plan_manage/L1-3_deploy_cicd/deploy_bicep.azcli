@@ -7,8 +7,11 @@
 
 $RG = "ai103-l1-3-rg"
 $LOCATION = "eastus2"
-# ⚠️ foundryName はサブドメインになるので「全世界で一意」。下の値のままだと
+# ⚠️ $ACCOUNT はサブドメインになるので「全世界で一意」。下の値のままだと
 #    CustomDomainInUse で弾かれる場合がある。末尾に自分用の英数字を足すこと。
+$ACCOUNT = "ai103l13foundry"
+$PROJECT = "ai103-l13-proj"
+$DEPLOYMENT = "chat"
 
 # 1) リソースグループ
 az group create --name $RG --location $LOCATION
@@ -17,15 +20,16 @@ az group create --name $RG --location $LOCATION
 az deployment group what-if `
   --resource-group $RG `
   --template-file main.bicep `
-  --parameters foundryName=ai103l13foundry projectName=ai103-l13-proj `
-               deploymentName=chat modelName=gpt-5.4-nano modelVersion=2026-03-17
+  --parameters foundryName=$ACCOUNT projectName=$PROJECT `
+               deploymentName=$DEPLOYMENT modelName=gpt-5.4-nano modelVersion=2026-03-17
 
 # 3) 適用（apply）: 問題なければ実際にデプロイ
+#   すでに同じ構成があるなら、what-if のとおり増えない（冪等）。
 az deployment group create `
   --resource-group $RG `
   --template-file main.bicep `
-  --parameters foundryName=ai103l13foundry projectName=ai103-l13-proj `
-               deploymentName=chat modelName=gpt-5.4-nano modelVersion=2026-03-17
+  --parameters foundryName=$ACCOUNT projectName=$PROJECT `
+               deploymentName=$DEPLOYMENT modelName=gpt-5.4-nano modelVersion=2026-03-17
 
 # 4) 出力（エンドポイント・デプロイ名）を確認 → .env に転記
 az deployment group show `
