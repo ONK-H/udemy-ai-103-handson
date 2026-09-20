@@ -2,7 +2,10 @@
   "name": "udemy-ai-103-handson (Python 3.11)",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
   "features": {
-    "ghcr.io/devcontainers/features/azure-cli:1": {},
+    "ghcr.io/devcontainers/features/azure-cli:1": {
+      "version": "latest",
+      "installUsingPython": true
+    },
     "ghcr.io/devcontainers/features/powershell:1": {}
   },
   "customizations": {
@@ -28,5 +31,5 @@
       }
     }
   },
-  "postCreateCommand": "python -m pip install --upgrade pip"
+  "postCreateCommand": "python -m pip install --upgrade pip && az version --query '\"azure-cli\"' -o tsv"
 }
