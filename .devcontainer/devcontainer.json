@@ -13,7 +13,8 @@
       "extensions": [
         "ms-python.python",
         "ms-azuretools.vscode-azureresourcegroups",
-        "ms-vscode.powershell"
+        "ms-vscode.powershell",
+        "ms-azuretools.vscode-bicep"
       ],
       "settings": {
         "editor.fontSize": 17,

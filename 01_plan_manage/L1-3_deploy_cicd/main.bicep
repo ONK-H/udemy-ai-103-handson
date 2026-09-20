@@ -107,7 +107,7 @@ resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2026-05-01
       version: modelVersion
     }
     raiPolicyName: contentFilterPolicyName
-    // バージョン自動更新ポリシー（Standard 系のみ有効）:
+    // バージョン自動更新ポリシー（新しい版が出たときに追随するかの方針）:
     //   OnceNewDefaultVersionAvailable / OnceCurrentVersionExpired / NoAutoUpgrade
     versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
   }
