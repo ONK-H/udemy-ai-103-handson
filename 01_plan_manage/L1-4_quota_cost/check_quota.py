@@ -118,7 +118,8 @@ def main():
         list_model_capacities()
     except requests.HTTPError as ex:
         # 403 ならロール不足 (Cognitive Services Usages Reader をサブスクスコープで付与)
-        print(f"HTTP エラー: {ex} / 応答: {ex.response.text if ex.response else ''}")
+        # ※ requests.Response は 4xx/5xx のとき bool() が False になるので `is not None` で判定する
+        print(f"HTTP エラー: {ex} / 応答: {ex.response.text if ex.response is not None else ''}")
     except Exception as ex:
         print(f"エラー: {ex}")
 
