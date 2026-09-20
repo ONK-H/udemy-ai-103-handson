@@ -16,7 +16,11 @@
         "editor.fontSize": 17,
         "terminal.integrated.fontSize": 15,
         "workbench.colorTheme": "Default Dark Modern",
-        "editor.minimap.enabled": false
+        "editor.minimap.enabled": false,
+        "git.blame.editorDecoration.enabled": false,
+        "git.blame.statusBarItem.enabled": false,
+        "workbench.startupEditor": "none",
+        "explorer.openEditors.visible": 0
       }
     }
   },
