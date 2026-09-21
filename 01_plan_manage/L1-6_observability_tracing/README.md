@@ -14,8 +14,8 @@
 
 ## 前提
 - **Foundry プロジェクト**にチャットモデルをデプロイ済み（`MODEL_DEPLOYMENT` はデプロイ名）
-- プロジェクトに **Application Insights を接続済み**（Foundry ポータル：Observability/Agents → Traces → Connect）
-- `az login` 済み ／ Python 3.9+（`azure-ai-projects` 2.0.0 以上）
+- プロジェクトに **Application Insights を接続済み**（Foundry ポータル：Build → Agents → Traces → Connect。見当たらなければ Manage → Project details → Connected resources）
+- `az login` 済み ／ Python 3.10+（`azure-ai-projects` 2.0.0 以上）
 - ロール：プロジェクトに **Contributor** 以上＋接続先 Application Insights に **Log Analytics Reader**（保護テーブルなら追加で **Privileged Monitoring Data Reader**）
 
 ## 進め方
@@ -39,11 +39,11 @@ A: ...(モデルの回答)...
 --- トレース送信完了。Foundry の Traces / Application Insights で確認できます(反映に2〜5分) ---
 ```
 
-実行後、**Foundry ポータル → Observability → Traces** に `l1-6-trace-demo` を親とするトレースが現れ、
+実行後、**Foundry ポータル → Build → Agents → Traces タブ** に `l1-6-trace-demo` を親とするトレースが現れ、
 `classify-question`（自作 span）と Responses API 呼び出しの span が並びます（反映に2〜5分）。
 
 ## Application Insights（KQL）で確認
-Foundry の Traces から「View in Azure Monitor」、または Application Insights → Logs で：
+Azure ポータルで接続先の Application Insights → Logs で：
 ```kusto
 // 依存関係(モデル呼び出し)の所要時間
 dependencies
@@ -78,4 +78,4 @@ dependencies
 
 ## 注意（揮発情報）
 - **GenAI トレースは実験的プレビュー**（span/属性が変わりうる）。`azure-ai-projects` は **2.0.0 以上**。
-- 計測の環境変数名・既定値、Foundry ポータルのラベル（Observability/Traces の配置）は変動。公式ドキュメントで都度確認。
+- 計測の環境変数名・既定値、Foundry ポータルのラベル（Build → Agents → Traces の配置）は変動。公式ドキュメントで都度確認。
