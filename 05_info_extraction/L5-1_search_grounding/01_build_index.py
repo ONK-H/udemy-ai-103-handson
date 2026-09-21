@@ -6,6 +6,7 @@ Text Split（チャンク化）+ Azure OpenAI Embedding（ベクトル化）= in
 """
 
 import os
+from azure.core.exceptions import HttpResponseError
 from azure.identity import DefaultAzureCredential
 from azure.search.documents.indexes import SearchIndexClient, SearchIndexerClient
 from azure.search.documents.indexes.models import (
@@ -18,6 +19,7 @@ from azure.search.documents.indexes.models import (
     SearchIndexerIndexProjection, SearchIndexerIndexProjectionSelector,
     SearchIndexerIndexProjectionsParameters, IndexProjectionMode,
     SearchIndexer,
+    SemanticSearch, SemanticConfiguration, SemanticPrioritizedFields, SemanticField,
 )
 from dotenv import load_dotenv
 
@@ -28,6 +30,8 @@ SEARCH_ENDPOINT = os.environ["SEARCH_ENDPOINT"]
 INDEX = os.environ["SEARCH_INDEX_NAME"]
 AOAI_ENDPOINT = os.environ["AOAI_ENDPOINT"]
 EMB_DEPLOY = os.environ["AOAI_EMBEDDING_DEPLOYMENT"]
+# model_name はカタログのモデル名（text-embedding-3-large など）。デプロイ名と同じなら省略可
+EMB_MODEL = os.getenv("AOAI_EMBEDDING_MODEL", EMB_DEPLOY)
 DIMS = int(os.getenv("AOAI_EMBEDDING_DIMENSIONS", "3072"))
 
 
@@ -37,8 +41,9 @@ def build() -> None:
     index = SearchIndex(
         name=INDEX,
         fields=[
-            SimpleField(name="chunk_id", type=SearchFieldDataType.String, key=True,
-                        sortable=True, filterable=True),
+            # index projections のキーは Edm.String + keyword アナライザーが条件（公式の要件）
+            SearchableField(name="chunk_id", type=SearchFieldDataType.String, key=True,
+                            sortable=True, filterable=True, analyzer_name="keyword"),
             SimpleField(name="parent_id", type=SearchFieldDataType.String, filterable=True),
             SearchableField(name="content", type=SearchFieldDataType.String),
             SimpleField(name="source", type=SearchFieldDataType.String, filterable=True),  # 引用用
@@ -56,7 +61,16 @@ def build() -> None:
                 vectorizer_name="aoai-vectorizer",
                 parameters=AzureOpenAIVectorizerParameters(
                     resource_url=AOAI_ENDPOINT, deployment_name=EMB_DEPLOY,
-                    model_name=EMB_DEPLOY),
+                    model_name=EMB_MODEL),
+            )],
+        ),
+        # セマンティック構成：エージェント側の既定 query_type（vector_semantic_hybrid）が使う
+        semantic_search=SemanticSearch(
+            default_configuration_name="default",
+            configurations=[SemanticConfiguration(
+                name="default",
+                prioritized_fields=SemanticPrioritizedFields(
+                    content_fields=[SemanticField(field_name="content")]),
             )],
         ),
     )
@@ -88,7 +102,7 @@ def build() -> None:
             AzureOpenAIEmbeddingSkill(
                 context="/document/pages/*",
                 resource_url=AOAI_ENDPOINT, deployment_name=EMB_DEPLOY,
-                model_name=EMB_DEPLOY, dimensions=DIMS,
+                model_name=EMB_MODEL, dimensions=DIMS,
                 inputs=[InputFieldMappingEntry(name="text", source="/document/pages/*")],
                 outputs=[OutputFieldMappingEntry(name="embedding", target_name="content_vector")],
             ),
@@ -118,8 +132,14 @@ def build() -> None:
         name=f"{INDEX}-idxr", data_source_name=ds.name, skillset_name=skillset.name,
         target_index_name=INDEX,
     )
-    ixr.create_or_update_indexer(indexer)
-    ixr.run_indexer(indexer.name)
+    ixr.create_or_update_indexer(indexer)   # 新規作成時はこの時点で自動的に1回走る
+    try:
+        ixr.run_indexer(indexer.name)
+    except HttpResponseError as e:
+        # 作成・更新時の自動実行と重なると「Another indexer invocation is currently in progress」
+        if e.status_code != 409 and "in progress" not in str(e):
+            raise
+        print("indexer は作成時の自動実行中です（同時実行エラーは想定内）。")
     print("indexer started. 数分後に Foundry/ポータルでドキュメント件数を確認してください。")
 
 

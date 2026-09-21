@@ -6,14 +6,19 @@ Blob のサンプル文書をチャンク化・ベクトル化してインデッ
 引用つきでグラウンディング回答させるハンズオン。
 
 ## 前提リソース
-- Azure AI Search（Basic 以上推奨）
+- Azure AI Search（**Basic 以上**。Free はマネージドIDでの外部接続が使えないため、このキーレス構成では不可）
+  - **API アクセス制御を「ロールベース」または「両方」にする**（既定は API キーのみ。`az search service update --auth-options aadOrApiKey ...`）
+  - **システム割り当てマネージドID を有効化**（インデクサーが Blob と埋め込みモデルを読むため）
+  - セマンティックランカーは既定で Free プラン（月の無料枠あり）。インデックス側のセマンティック構成はスクリプトが作る
 - Microsoft Foundry プロジェクト ＋ Azure OpenAI 埋め込みモデル（例 `text-embedding-3-large`）＋ チャットモデル（例 `gpt-4.1-mini`）
 - Azure Blob Storage（サンプル文書コンテナ）
+- Foundry プロジェクトから Azure AI Search への**接続**（Foundry ポータル：プロジェクト → **Manage** → **Project details** → **Connected resources** → **Add connection** → Azure AI Search。認証はキーレス＝Microsoft Entra ID を選ぶ）
 
 ## RBAC（キーレス。自分と各マネージドIDに付与）
-- 検索サービス：`Search Service Contributor` ＋ `Search Index Data Contributor`
-- ストレージ：（検索サービスのマネージドIDに）`Storage Blob Data Reader`
-- Azure OpenAI：（検索サービスのマネージドIDに）`Cognitive Services OpenAI User`
+- 自分：検索サービスに `Search Service Contributor` ＋ `Search Index Data Contributor`
+- 検索サービスのマネージドID：ストレージに `Storage Blob Data Reader`、埋め込みモデルのリソースに `Cognitive Services OpenAI User`
+- Foundry リソース（アカウント）のシステム割り当てマネージドID：検索サービスに `Search Index Data Contributor` ＋ `Search Service Contributor`
+  （公式の手順は「Foundry アカウントのマネージドID」、トラブルシュート表は「プロジェクトのマネージドID」と書いている。401/403 が出たらプロジェクトのマネージドIDにも付与する）
 
 ## 手順
 ```bash
