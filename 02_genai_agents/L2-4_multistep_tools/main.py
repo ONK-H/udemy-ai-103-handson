@@ -87,6 +87,8 @@ def main() -> None:
             print("\n=== 最終回答 ===")
             print(res.output_text)
             break
+        # モデルの出力（function_call と、推論モデルなら reasoning 項目）をそのまま入力に積む
+        messages += res.output
         for call in calls:
             name = call.name
             args = json.loads(call.arguments)
@@ -95,7 +97,6 @@ def main() -> None:
                 result = TOOL_IMPL[name](**args)
             except Exception as ex:  # 信頼性：エラーをモデルに返す
                 result = {"error": str(ex)}
-            messages.append(call)
             messages.append({
                 "type": "function_call_output",
                 "call_id": call.call_id,
