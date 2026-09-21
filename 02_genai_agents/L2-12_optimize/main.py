@@ -2,7 +2,7 @@
 
 同一タスクを baseline → 改善プロンプト → self-critique（批評→改稿）で実行し、
 ビフォーアフターを比較する。認証はキーレス（DefaultAzureCredential + az login）。
-定量比較は azure-ai-evaluation で baseline と revised を採点する（L2-5 参照）。
+定量比較はこのコードには入れていない。L2-5 の評価器で baseline と revised を採点する。
 """
 
 import os
