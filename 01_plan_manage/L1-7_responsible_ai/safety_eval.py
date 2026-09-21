@@ -38,7 +38,7 @@ def main() -> None:
     content_safety = ContentSafetyEvaluator(
         azure_ai_project=PROJECT_ENDPOINT,
         credential=credential,
-        threshold=3,  # 既定3。score >= しきい値 を「不合格(危険)」とみなす
+        violence_threshold=3,  # しきい値はハーム別の引数(既定3)。threshold= は無視される
     )
 
     with open(DATASET, encoding="utf-8") as f:

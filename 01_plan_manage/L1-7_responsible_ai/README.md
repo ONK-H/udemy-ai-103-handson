@@ -16,8 +16,8 @@
 
 ## 前提
 - **Foundry プロジェクト**にチャットモデルをデプロイ済み（`MODEL_DEPLOYMENT` はデプロイ名）
-- `az login` 済み ／ Python 3.9+（`azure-ai-projects` 2.0.0 以上）
-- ロール：プロジェクトに **Foundry User**（旧 Azure AI User）。安全性評価サービス対応リージョンであること
+- `az login` 済み ／ Python 3.10+（`azure-ai-projects` 2.0.0 以上）
+- ロール：プロジェクトに **Foundry User**（旧 Azure AI User）。安全性評価サービス対応リージョン（Japan East は非対応。East US 2／Sweden Central など）のプロジェクトであること
 - （任意）ポータルで **Build → Guardrails** からカスタムガードレールを作成してデプロイに割り当てると、ブロック挙動を厳格化して試せる
 
 ## 進め方
@@ -64,7 +64,7 @@ content_filters 注釈:
 |---|---|
 | 危険入力がブロックされない | デプロイのガードレールしきい値が緩い可能性。ポータルでカスタムガードレールを作り厳格化、`CUSTOM_GUARDRAIL_NAME` で上書きして再試行 |
 | `content_filters` が出ない | 既定設定では Safe 時に省略されることがある。危険寄りの入力や注釈有効化で確認 |
-| `safety_eval.py` で 403 / リージョンエラー | プロジェクトに **Foundry User** ロール、評価サービス対応リージョンか確認 |
+| `safety_eval.py` で 403 / リージョンエラー | プロジェクトに **Foundry User** ロール、評価サービス対応リージョンか確認（Japan East は非対応） |
 | `model not found` | `MODEL_DEPLOYMENT` が**デプロイ名**と一致しているか（カタログ名ではない） |
 | `azure_ai_project` 型エラー | バージョンにより dict 形式が必要な場合あり。`{"subscription_id":..., "resource_group_name":..., "project_name":...}` を試す |
 
