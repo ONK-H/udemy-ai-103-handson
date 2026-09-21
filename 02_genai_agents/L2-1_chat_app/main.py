@@ -30,7 +30,7 @@ def main() -> None:
     openai = project.get_openai_client()  # OpenAI 互換クライアント（Responses API）
 
     # 会話履歴を自前で保持（方式B）。システムメッセージは履歴に入れず instructions で渡す
-    # （system ロールのメッセージの直後に type なしの user メッセージを並べると 400 になるため）
+    # （system の直後に type なしのメッセージを置くと 400 になった。type を付けても通る）
     history = []
 
     print("CLIチャット（終了: exit / quit）。話しかけてください。")
