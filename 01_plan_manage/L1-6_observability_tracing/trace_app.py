@@ -40,7 +40,9 @@ project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCred
 
 # --- 2) プロジェクトに接続済みの Application Insights へ span をエクスポート ---
 connection_string = project.telemetry.get_application_insights_connection_string()
-configure_azure_monitor(connection_string=connection_string)
+# 既定のサンプラーは 1 秒あたり約 5 件に間引き、間引かれた span では計測が落ちることがある。
+# デモでは全件記録する (sampling_ratio=1.0)。本番ではコストに応じて下げる。
+configure_azure_monitor(connection_string=connection_string, sampling_ratio=1.0)
 
 # --- 1) GenAI 計測を有効化 (Responses/Conversations API 呼び出しが自動トレースされる) ---
 AIProjectInstrumentor().instrument()
@@ -63,12 +65,12 @@ def ask(question: str) -> str:
         "あなたは丁寧なAzureサポート担当です。" if category == "support"
         else "あなたは簡潔なアシスタントです。"
     )
+    # システムメッセージは instructions で渡す。system ロールのメッセージの直後に
+    # type なしの user メッセージを並べると、Responses API が 400 を返すことがある。
     res = client.responses.create(
         model=MODEL,
-        input=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": question},
-        ],
+        instructions=system,
+        input=question,
     )
     return res.output_text
 
