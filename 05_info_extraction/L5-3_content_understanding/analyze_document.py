@@ -1,7 +1,7 @@
 """L5-3 実践: カスタムアナライザーで文書から構造化フィールド＋markdown を抽出。
 
 フィールド方式 extract / generate / classify を1つずつ使う。
-認証はキーレス（az login + DefaultAzureCredential）。
+GA API（2025-11-01）版。認証はキーレス（az login + DefaultAzureCredential）。
 """
 
 import os
@@ -9,7 +9,7 @@ import time
 from azure.identity import DefaultAzureCredential
 from azure.ai.contentunderstanding import ContentUnderstandingClient
 from azure.ai.contentunderstanding.models import (
-    ContentAnalyzer, ContentFieldSchema, ContentFieldDefinition,
+    ContentAnalyzer, ContentAnalyzerConfig, ContentFieldSchema, ContentFieldDefinition,
     ContentFieldType, GenerationMethod, AnalysisInput,
 )
 from dotenv import load_dotenv
@@ -17,12 +17,17 @@ from dotenv import load_dotenv
 load_dotenv()
 ENDPOINT = os.environ["CONTENTUNDERSTANDING_ENDPOINT"]
 DOCUMENT_URL = os.environ["DOCUMENT_URL"]
+# アナライザーが使う Foundry モデル（デプロイ名ではなくカタログのモデル名）。
+# 実際のデプロイへの対応付けは、リソースの「モデルデプロイの既定（defaults）」で行う
+COMPLETION_MODEL = os.getenv("CU_COMPLETION_MODEL", "gpt-4.1")
+EMBEDDING_MODEL = os.getenv("CU_EMBEDDING_MODEL", "text-embedding-3-large")
 
 
 def main() -> None:
     client = ContentUnderstandingClient(
         endpoint=ENDPOINT, credential=DefaultAzureCredential())
-    analyzer_id = f"l5-3-doc-analyzer-{int(time.time())}"
+    # アナライザーIDに使えるのは英数字・ドット・アンダースコアだけ（ハイフンは InvalidAnalyzerId）
+    analyzer_id = f"l5_3_doc_analyzer_{int(time.time())}"
 
     # 1) スキーマ定義：extract / generate / classify を1つずつ
     field_schema = ContentFieldSchema(
@@ -49,9 +54,18 @@ def main() -> None:
         },
     )
     analyzer = ContentAnalyzer(
-        base_analyzer_id="prebuilt-documentAnalyzer",   # 文書のベースアナライザー
+        base_analyzer_id="prebuilt-document",   # 文書のベースアナライザー（GA の4種の1つ）
         description="L5-3 custom document analyzer",
+        config=ContentAnalyzerConfig(
+            enable_ocr=True,
+            enable_layout=True,
+            # GA では confidence / grounding は既定で返らない。明示的に有効化する
+            estimate_field_source_and_confidence=True,
+            return_details=True,
+        ),
         field_schema=field_schema,
+        # field_schema を持つ prebuilt-document 派生アナライザーでは必須
+        models={"completion": COMPLETION_MODEL, "embedding": EMBEDDING_MODEL},
     )
 
     # 2) アナライザー作成（非同期LRO）
@@ -90,6 +104,6 @@ if __name__ == "__main__":
         main()
     except Exception as e:  # 教育目的のエラーハンドリング
         print(f"エラー: {type(e).__name__}: {e}")
-        print("Foundry のモデルデプロイ既定が設定されているか、Cognitive Services User ロール、"
-              "エンドポイント、DOCUMENT_URL を確認してください。")
+        print("Foundry のモデルデプロイ既定（CU_COMPLETION_MODEL / CU_EMBEDDING_MODEL が対応付いているか）、"
+              "Cognitive Services User ロール、エンドポイント、DOCUMENT_URL を確認してください。")
         raise

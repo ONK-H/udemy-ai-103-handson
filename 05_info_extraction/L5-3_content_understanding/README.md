@@ -6,6 +6,11 @@
 ## 前提リソース
 - Microsoft Foundry リソース（Content Understanding を含む）
 - **モデルデプロイの既定（model deployment defaults）** の設定（生成能力を支える Foundry モデル）
+  - Content Understanding Studio（https://contentunderstanding.ai.azure.com/settings）→ **+ Add resource** → リソースを選び、
+    「必要なモデルを自動デプロイする」にチェック → **Next** → **Save**
+  - `.env` の `CU_COMPLETION_MODEL`／`CU_EMBEDDING_MODEL` は、この既定に登録されている**モデル名**に合わせる
+  - 対応モデル：https://learn.microsoft.com/azure/ai-services/content-understanding/service-limits#supported-generative-models
+- 対応リージョン（japaneast など）：https://learn.microsoft.com/azure/ai-services/content-understanding/language-region-support
 
 ## RBAC（キーレス）
 - 自分の ID に `Cognitive Services User`
@@ -24,5 +29,7 @@ python analyze_document.py
 ## 後片付け
 アナライザーはスクリプトの finally で削除。検証専用に作った Foundry リソース／モデルデプロイは削除（リソースグループごとが確実）。
 
-> ⚠️ Content Understanding は生成AI処理のため課金されます。SDK のクラス名・base_analyzer_id・API バージョンは
+> ⚠️ Content Understanding は生成AI処理のため課金されます。API は GA `2025-11-01`（SDK 1.1.x の既定）。
+> カスタムアナライザーの親にできるのは `prebuilt-document` / `prebuilt-image` / `prebuilt-audio` / `prebuilt-video` の4つだけ
+> （プレビュー時代の `prebuilt-documentAnalyzer` は使えない）。SDK のクラス名・base_analyzer_id・API バージョンは
 > 変化が速いので、`pip show azure-ai-contentunderstanding` と公式ドキュメントで最新を確認すること。
