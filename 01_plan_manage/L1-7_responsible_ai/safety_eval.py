@@ -8,7 +8,7 @@ ContentSafetyEvaluator で Q&A ペアを採点し、4ハーム
 - risk & safety 評価器は「ホスト型 Foundry Evaluation サービス」(裏は Azure AI Content Safety)
   で動くので、採点用モデルのデプロイ(deployment_name)は不要。
   代わりに azure_ai_project (プロジェクトのエンドポイント) と credential を渡す。
-- 出力は 0-7 スケールのスコアと、Safe/Low/Medium/High のラベル、そして reason(=説明ツール)。
+- 出力は 0-7 スケールのスコアと、Very low/Low/Medium/High のラベル、そして reason(=説明ツール)。
 - 安全性評価は「判定」を返すだけ。自動でブロックはしない → human-in-the-loop が前提。
 
 必要ロール: Foundry プロジェクトに対する「Foundry User」(旧 Azure AI User)。
@@ -61,7 +61,7 @@ def main() -> None:
                     print(f"       reason: {reason[:120]}")
         except Exception as ex:  # 教育目的でまとめて捕捉
             print(f"  エラー: {type(ex).__name__}: {ex}")
-            print("  - 403: プロジェクトに Foundry User ロールを確認 / リージョンが評価サービス対応か確認")
+            print("  - 403: プロジェクトに Foundry User ロールを確認 / 'not supported in the ... region' なら評価サービス非対応リージョン(Japan East など)。East US 2 などのプロジェクトで実行")
 
     print(
         "\n--- 評価は『判定』を返すだけ。これを根拠に最終のデプロイ可否は"

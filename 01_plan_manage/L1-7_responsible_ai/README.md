@@ -64,7 +64,7 @@ content_filters 注釈:
 |---|---|
 | 危険入力がブロックされない | デプロイのガードレールしきい値が緩い可能性。ポータルでカスタムガードレールを作り厳格化、`CUSTOM_GUARDRAIL_NAME` で上書きして再試行 |
 | `content_filters` が出ない | 既定設定では Safe 時に省略されることがある。危険寄りの入力や注釈有効化で確認 |
-| `safety_eval.py` で 403 / リージョンエラー | プロジェクトに **Foundry User** ロール、評価サービス対応リージョンか確認（Japan East は非対応） |
+| `safety_eval.py` で 403 / リージョンエラー | プロジェクトに **Foundry User** ロール、評価サービス対応リージョンか確認（Japan East は非対応。実測：`UserError: Single inline evaluations are not supported in the japaneast region`） |
 | `model not found` | `MODEL_DEPLOYMENT` が**デプロイ名**と一致しているか（カタログ名ではない） |
 | `azure_ai_project` 型エラー | バージョンにより dict 形式が必要な場合あり。`{"subscription_id":..., "resource_group_name":..., "project_name":...}` を試す |
 
