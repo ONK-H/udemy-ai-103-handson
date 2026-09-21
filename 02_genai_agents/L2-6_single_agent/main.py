@@ -55,7 +55,7 @@ def main() -> None:
     except Exception as ex:  # 教育目的の素朴なエラーハンドリング
         print(f"[エラー] {ex}")
     finally:
-        # 3) 後片付け（課金リソースを削除）
+        # 3) 後片付け（作成したエージェントのバージョンを削除）
         if agent:
             project.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
             print("エージェントを削除しました")
