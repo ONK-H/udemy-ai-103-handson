@@ -56,12 +56,11 @@ client = project.get_openai_client()  # OpenAI 互換クライアント（Respon
 
 def analyze_review(text: str) -> dict:
     """1件のレビューを構造化JSONに分析して返す。"""
+    # システムメッセージは instructions で渡す（system の直後に type なしの user を並べると 400 になるため）
     response = client.responses.create(
         model=MODEL_DEPLOYMENT,
-        input=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": text},
-        ],
+        instructions=SYSTEM_PROMPT,
+        input=text,
         text={
             "format": {
                 "type": "json_schema",

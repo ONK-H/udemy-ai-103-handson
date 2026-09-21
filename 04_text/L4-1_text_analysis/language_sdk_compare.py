@@ -20,7 +20,15 @@ client = TextAnalyticsClient(endpoint=ENDPOINT, credential=DefaultAzureCredentia
 
 def main():
     with open("reviews.json", encoding="utf-8") as f:
-        documents = json.load(f)
+        texts = json.load(f)
+
+    # 言語を指定しないと既定の "en" として解析され、日本語レビューを正しく判定できない。
+    # 先に言語検出（detect_language）を行い、結果を各ドキュメントの language に渡す。
+    detected = client.detect_language(texts)
+    documents = [
+        {"id": str(i), "text": t, "language": d.primary_language.iso6391_name if not d.is_error else "en"}
+        for i, (t, d) in enumerate(zip(texts, detected), 1)
+    ]
 
     # 感情分析（オピニオンマイニング＝側面ベースも有効化）
     sentiment_results = client.analyze_sentiment(documents, show_opinion_mining=True)
