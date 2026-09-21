@@ -55,7 +55,11 @@ tracer = trace.get_tracer(__name__)
 @trace_function("classify-question")
 def classify_question(text: str) -> str:
     """超簡易の質問分類。本来はDB照会やAPI呼び出しなどのツールの代わり。"""
-    return "support" if ("エラー" in text or "動かない" in text) else "general"
+    category = "support" if ("エラー" in text or "動かない" in text) else "general"
+    # 引数・戻り値の code.* 属性は Application Insights の customDimensions に載らない。
+    # KQL で検索したい値は、code. 以外の名前で現在の span に足す。
+    trace.get_current_span().set_attribute("app.question_category", category)
+    return category
 
 
 def ask(question: str) -> str:
