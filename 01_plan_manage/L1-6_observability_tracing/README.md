@@ -1,6 +1,6 @@
 # L1-6 実践: トレースを仕込んで Application Insights で可視化
 
-自分の生成AIアプリに **OpenTelemetry トレース**を仕込み、**Foundry の Traces** と **Azure Monitor Application Insights** で「**呼び出し・トークン・レイテンシ**」を可視化するハンズオンです。
+自分の生成AIアプリに **OpenTelemetry トレース**を仕込み、**Azure Monitor Application Insights** で「**呼び出し・トークン・レイテンシ**」を可視化するハンズオンです（Foundry ポータルのトレース画面はエージェント向けで、自作アプリのトレースは並びません）。
 
 > 対応レクチャー：座学 `L1-6-1`(可観測性の基盤と性能監視)／`L1-6-2`(品質・安全性・グラウンディング・データ監視)、実践 `L1-6-3` ／ 対応スキル：S1.c-2,3
 > 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）。APIキーは使いません。
@@ -14,7 +14,7 @@
 
 ## 前提
 - **Foundry プロジェクト**にチャットモデルをデプロイ済み（`MODEL_DEPLOYMENT` はデプロイ名）
-- プロジェクトに **Application Insights を接続済み**（Foundry ポータル：Build → Agents → Traces → Connect。見当たらなければ Manage → Project details → Connected resources）
+- プロジェクトに **Application Insights を接続済み**（確認・追加は Foundry ポータルの Manage → Project details → Connected resources。エージェントの無いプロジェクトには Build → Agents → Traces のタブはありません）
 - `az login` 済み ／ Python 3.10+（`azure-ai-projects` 2.0.0 以上）
 - ロール：プロジェクトに **Contributor** 以上＋接続先 Application Insights に **Log Analytics Reader**（保護テーブルなら追加で **Privileged Monitoring Data Reader**）
 
@@ -39,7 +39,7 @@ A: ...(モデルの回答)...
 --- トレース送信完了。Foundry の Traces / Application Insights で確認できます(反映に2〜5分) ---
 ```
 
-実行後、**Foundry ポータル → Build → Agents → Traces タブ** に `l1-6-trace-demo` を親とするトレースが現れ、
+実行後、**Azure ポータル → Application Insights → Logs** で、`l1-6-trace-demo` を親とするトレースが `dependencies` テーブルに現れ、
 `classify-question`（自作 span）と Responses API 呼び出しの span が並びます（反映に2〜5分）。
 
 ## Application Insights（KQL）で確認
@@ -78,4 +78,4 @@ dependencies
 
 ## 注意（揮発情報）
 - **GenAI トレースは実験的プレビュー**（span/属性が変わりうる）。`azure-ai-projects` は **2.0.0 以上**。
-- 計測の環境変数名・既定値、Foundry ポータルのラベル（Build → Agents → Traces の配置）は変動。公式ドキュメントで都度確認。
+- 計測の環境変数名・既定値、Foundry／Azure ポータルのラベルや配置は変動。公式ドキュメントで都度確認。
