@@ -84,9 +84,10 @@ def main() -> None:
             else:
                 print(f"AI> {res.output_text}")
             print(f"conversation id: {conversation.id}")
-        print("Foundry ポータルの Agents → Traces で trace を確認（取り込みに2〜5分）")
+        print("Foundry ポータルの Agents → traced-agent → Traces で trace を確認（取り込みに2〜5分）")
+        input("確認できたら Enter を押してください（エージェントを削除して終了）> ")
     finally:
-        # conversation はポータルの Conversation ビューで見るため残す（エージェントだけ削除）
+        # エージェントを消すとポータルの Traces から辿れなくなるので、確認のあとに削除する（conversation は残す）
         if agent:
             project.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
 
