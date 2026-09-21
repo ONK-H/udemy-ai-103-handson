@@ -41,7 +41,7 @@ def main() -> None:
 
     # 3) 信頼度の確認：1ページ目の単語の信頼度（低信頼の検出に使う）
     if result.pages and result.pages[0].words:
-        low = [w for w in result.pages[0].words if (w.confidence or 1) < 0.8]
+        low = [w for w in result.pages[0].words if w.confidence is not None and w.confidence < 0.8]
         print(f"\n1ページ目の単語: {len(result.pages[0].words)} 個 / "
               f"信頼度0.8未満: {len(low)} 個")
         for w in low[:5]:
