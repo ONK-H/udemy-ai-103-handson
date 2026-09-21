@@ -89,6 +89,16 @@ az resource show --ids $FOUNDRY_ID --query "properties.disableLocalAuth"
 az cognitiveservices account keys regenerate -n $FOUNDRY -g $RG --key-name Key1
 az cognitiveservices account keys regenerate -n $FOUNDRY -g $RG --key-name Key2
 
+#    ⚠️ 5) で disableLocalAuth=true にした「あと」だと、この再生成は失敗する（2026-09-21 実測）:
+#         (BadRequest) Failed to regenerate key. disableLocalAuth is set to be true
+#       → 順序は「再生成が先、無効化があと」。
+#       無効化したあとで再生成が要る（キーが漏れた等）ときは、いったん false に戻してから行う:
+#         az resource update --ids $FOUNDRY_ID --set properties.disableLocalAuth=false
+#         az cognitiveservices account keys regenerate -n $FOUNDRY -g $RG --key-name Key1   # Key2 も
+#         az resource update --ids $FOUNDRY_ID --set properties.disableLocalAuth=true
+#       ※ regenerate の出力には新しいキーが載る。画面に出したくないときは
+#         --query "key1 | length(@)" -o tsv のように長さだけ取り出す。
+
 # --- 後片付け ---
 # 1) キー無効化を元に戻す（この後のレッスンでキー方式を比較したい場合）
 # az resource update --ids $FOUNDRY_ID --set properties.disableLocalAuth=false
