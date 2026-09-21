@@ -3,7 +3,7 @@
 Microsoft Foundry のプロジェクトに接続し、Responses API で多ターン対話する。
 - 会話履歴を自前で配列管理（方式B）して文脈を保持
 - stream=True で逐次表示（TTFT 改善）
-- システムメッセージで役割を固定
+- システムメッセージ（instructions）で役割を固定
 認証はキーレス（DefaultAzureCredential + az login）。
 """
 
@@ -29,8 +29,9 @@ def main() -> None:
     project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCredential())
     openai = project.get_openai_client()  # OpenAI 互換クライアント（Responses API）
 
-    # 会話履歴を自前で保持（方式B）。先頭にシステムメッセージ
-    history = [{"role": "system", "content": SYSTEM_PROMPT}]
+    # 会話履歴を自前で保持（方式B）。システムメッセージは履歴に入れず instructions で渡す
+    # （system ロールのメッセージの直後に type なしの user メッセージを並べると 400 になるため）
+    history = []
 
     print("CLIチャット（終了: exit / quit）。話しかけてください。")
     while True:
@@ -54,7 +55,8 @@ def main() -> None:
         try:
             stream = openai.responses.create(
                 model=MODEL_DEPLOYMENT,
-                input=history,        # これまでの履歴をまとめて渡す
+                instructions=SYSTEM_PROMPT,  # 役割・口調は毎ターン instructions で効かせる
+                input=history,        # これまでの履歴（user / assistant）をまとめて渡す
                 stream=True,
             )
             for event in stream:
