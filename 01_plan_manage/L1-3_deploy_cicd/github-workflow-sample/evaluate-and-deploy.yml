@@ -78,7 +78,7 @@ jobs:
               --template-file 01_plan_manage/L1-3_deploy_cicd/main.bicep \
               --parameters foundryName=${{ vars.FOUNDRY_NAME }} deploymentName=${{ vars.DEPLOYMENT_NAME }}
 
-      - name: Deploy（Bicep 適用＝apply）
+      - name: Deploy（Bicep 適用: apply）
         uses: azure/cli@v2
         with:
           inlineScript: |
