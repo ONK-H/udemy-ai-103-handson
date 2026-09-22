@@ -15,7 +15,7 @@ Blob のサンプル文書をチャンク化・ベクトル化してインデッ
 - Foundry プロジェクトから Azure AI Search への**接続**（Foundry ポータル：プロジェクト → **Manage** → **Project details** → **Connected resources** → **Add connection** → Azure AI Search。認証はキーレス＝Microsoft Entra ID を選ぶ）
 
 ## RBAC（キーレス。自分と各マネージドIDに付与）
-- 自分：検索サービスに `Search Service Contributor` ＋ `Search Index Data Contributor`
+- 自分：検索サービスに `Search Service Contributor` ＋ `Search Index Data Contributor`、ストレージに `Storage Blob Data Contributor`（サンプル文書のアップロードに使う）
 - 検索サービスのマネージドID：ストレージに `Storage Blob Data Reader`、埋め込みモデルのリソースに `Cognitive Services OpenAI User`
 - Foundry リソース（アカウント）のシステム割り当てマネージドID：検索サービスに `Search Index Data Contributor` ＋ `Search Service Contributor`
   （公式の手順は「Foundry アカウントのマネージドID」、トラブルシュート表は「プロジェクトのマネージドID」と書いている。401/403 が出たらプロジェクトのマネージドIDにも付与する）
