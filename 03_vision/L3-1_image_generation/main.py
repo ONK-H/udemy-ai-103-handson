@@ -7,26 +7,32 @@
 
 GPT-image 系は応答を base64 (b64_json) で返すのでデコードして保存する。
 認証はキーレス (az login 済みの DefaultAzureCredential)。
+
+接続先は Foundry リソースの /openai/v1/ エンドポイント。プロジェクトのエンドポイント
+(.../api/projects/<name>) 経由の project.get_openai_client() では、画像の生成・編集が
+404 になる（2026-09-22 実測）ため、L1-5 の直接呼び出しと同じ形で OpenAI クライアントを作る。
 """
 
 import os
 import base64
 from io import BytesIO
 
-from azure.identity import DefaultAzureCredential
-from azure.ai.projects import AIProjectClient
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
+from openai import OpenAI
 from PIL import Image, ImageDraw
 
 load_dotenv()
 
-PROJECT_ENDPOINT = os.getenv("PROJECT_ENDPOINT")
+BASE_URL = os.getenv("FOUNDRY_OPENAI_BASE_URL")  # https://<resource>.openai.azure.com/openai/v1/
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "gpt-image-2")  # デプロイ名
 SIZE = "1024x1024"
 
-# キーレス認証で Foundry プロジェクトに接続し、OpenAI クライアントを取得
-project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCredential())
-client = project.get_openai_client()
+# キーレス認証: api_key の代わりに Entra ID のトークンプロバイダーを渡す
+token_provider = get_bearer_token_provider(
+    DefaultAzureCredential(), "https://ai.azure.com/.default"
+)
+client = OpenAI(base_url=BASE_URL, api_key=token_provider)
 
 
 def save_b64_png(b64_data: str, path: str):
@@ -90,10 +96,13 @@ if __name__ == "__main__":
         # (2) マスク: 中央を透明にする(編集対象)
         make_center_mask("generated.png", "mask.png")
         # (3) 編集(inpainting): 中央にだけ観葉植物の鉢を追加
+        #     プロンプトは「マスクの部分に何を描くか」を明示する。短く「Place a plant」だけだと、
+        #     中央が黒く塗りつぶされて返ることがあった（2026-09-22 実測）。
         edit_image(
             "generated.png",
             "mask.png",
-            "Place a small potted green plant on the desk",
+            "Fill the masked area with a small potted green plant standing on the desk, "
+            "matching the lighting and style of the rest of the image",
             "edited.png",
         )
         print("\n完了: generated.png / mask.png / edited.png を見比べてください。")
