@@ -2,7 +2,7 @@
 
 モデルデプロイを **CLI／Bicep（IaC）で再現**し、**スモークテスト**で動作確認、さらに **GitHub Actions の雛形**で「評価ゲート → デプロイ」の流れを体験するハンズオンです。
 
-> 対応レクチャー：座学 `L1-3a`／実践 `L1-3b` ／ 対応スキル：S1.b-1,2,3,4
+> 対応レクチャー：座学 `L1-3-1`〜`L1-3-5`／実践 `L1-3-6`（CLI・Bicep・スモークテスト）・`L1-3-7`（評価ゲート付き CI/CD） ／ 対応スキル：S1.b-1,2,3,4
 > 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）。APIキーは使いません。
 
 ## ファイル構成
@@ -18,7 +18,7 @@
 | `github-workflow-sample/evaluate-and-deploy.yml` | **GitHub Actions 雛形**：PR で評価ゲート、main で評価→デプロイ |
 
 ## 前提
-- Azure サブスクリプション ／ `az login` 済み ／ Azure CLI（`cognitiveservices` 拡張：`az extension add -n cognitiveservices`）
+- Azure サブスクリプション ／ `az login` 済み ／ Azure CLI 2.80.0 以上（`az cognitiveservices` は本体同梱で拡張は不要。`account project` は 2.80.0 で追加。古ければ `az upgrade`）
 - Python 3.11+
 - 出力の整形は az 組み込みの `--query`（JMESPath）＋ `-o table/tsv/json` を使用（`jq` などの外部ツールは不要）
 - シェルは **PowerShell** を前提（`.azcli` は PowerShell の変数記法 `$RG = "..."`・継続行はバッククォート ` で記述）。bash の場合は変数代入を `RG="..."`、継続行を `\` に読み替える。

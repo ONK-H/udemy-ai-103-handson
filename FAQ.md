@@ -50,7 +50,7 @@ az rest --method get `
 
 **そのまま動くレッスン（読み替え不要）**
 
-`L1-2` / `L1-3` / `L2-1` / `L2-2` / `L2-3` / `L2-4` / `L2-6` / `L2-7` / `L2-8` / `L2-10` / `L2-11` / `L2-12` / `L4-1` / `L4-3` / `L4-4`
+`L1-2` / `L1-3` / `L2-1` / `L2-2` / `L2-3` / `L2-4` / `L2-6` / `L2-7` / `L2-8` / `L2-9` / `L2-10` / `L2-11` / `L2-12` / `L4-1` / `L4-3` / `L4-4`
 
 **`.env` のモデル名を読み替えれば動くレッスン**
 
@@ -65,7 +65,6 @@ az rest --method get `
 | `01_plan_manage/L1-6_observability_tracing` | `gpt-4.1` | `gpt-4.1-mini` |
 | `01_plan_manage/L1-7_responsible_ai` | `gpt-4.1` | `gpt-4.1-mini` |
 | `02_genai_agents/L2-5_evaluate_rag` | `gpt-4.1`（採点役） | `gpt-4.1-mini` |
-| `02_genai_agents/L2-9_multi_agent` | `gpt-4o-mini` | `gpt-4.1-mini` |
 | `03_vision/L3-3_multimodal_understanding` | `gpt-4o` | `gpt-4.1-mini`（画像理解に対応） |
 | `04_text/L4-2_translation` | `gpt-5.1` | `gpt-4.1-mini` |
 | `05_info_extraction/L5-1_search_grounding` | `text-embedding-3-large` | `text-embedding-3-small`＋**次元を 1536 に** |
@@ -79,7 +78,7 @@ az rest --method get `
 | レッスン | モデル | 理由 |
 |---|---|---|
 | `03_vision/L3-1_image_generation` | `gpt-image-2` | 最下位ティアに**画像生成モデルが1つも無い** |
-| `03_vision/L3-2_video_generation` | Sora / Sora 2 | 最下位ティアに**動画生成モデルが無い**。加えてプレビューでリージョン制約もある |
+| `03_vision/L3-2_video_generation` | `sora-2` | 最下位ティアに**動画生成モデルが無い**。加えてプレビューで、提供リージョンは East US 2 / Sweden Central のみ。現行版（2025-12-08）は **2026-10-15 に廃止予定** |
 
 この2つは差し替えでは回避できません。→ 次の項目へ
 
@@ -101,7 +100,7 @@ az rest --method get `
 - 記入するもの：サブスクリプションID・リージョン・モデル名（`gpt-image-2` など）・希望 TPM
 - 必要な権限：サブスクリプションの **Owner** または **Contributor**
 - コツ：申請は「**既存のクォータを実際に使っている顧客**」が優先されます。先に他のレッスンで実際に推論を回してから申請すると通りやすくなります
-- 動画生成（Sora）はプレビューかつ対応リージョンが限られるので、申請前にカタログでデプロイ可能なリージョンを確認してください
+- 動画生成（`sora-2`）はプレビューで、提供リージョンは East US 2 / Sweden Central のみです。廃止予定日（現行版は 2026-10-15）も含めて、申請前にカタログと [モデルの廃止スケジュール](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule) を確認してください
 
 なお、ティアは消費実績と支払い履歴で自動的に上がります。講座を順に進めていれば、後半のレッスンに着手する頃には使えるようになっている可能性もあります。
 

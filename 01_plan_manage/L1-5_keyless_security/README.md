@@ -65,7 +65,7 @@ python keyless_openai_direct.py
 ## つまずき
 - **`403 Forbidden` / `401 PermissionDenied`**：ロール不足。上の表のロールを割り当て、**5分以上待って**再実行。`Owner` だけでは通りません。
 - **`401 Unauthorized`（`audience is incorrect`）**：トークンの**宛先違い**。スコープは `https://ai.azure.com/.default`。`az login` していない場合もここ。
-- **`disableLocalAuth` 後にキー方式が 403**：期待どおりの動作です。`AuthenticationTypeDisabled`（`Key based authentication is disabled for this resource.`）が返ります。**反映は即時**で、待ち時間はありません。
+- **`disableLocalAuth` 後にキー方式が 403**：期待どおりの動作です。`AuthenticationTypeDisabled`（`Key based authentication is disabled for this resource.`）が返ります。反映は収録環境では即時でしたが、公式ドキュメントは「通常数分、最大で数時間」としています。まだ 200 が返る場合は少し待って再実行してください。
 - **`Custom subdomain required`**：リソースにカスタムサブドメインが無い。トークン認証の前提条件です。
 - **`404 Workspace not found`**：`PROJECT_ENDPOINT` のプロジェクトが存在しない（削除済み等）。ポータルで現行のエンドポイントを確認。
 - **`model not found`**：`MODEL_DEPLOYMENT` は**カタログ名ではなくデプロイ名**。
