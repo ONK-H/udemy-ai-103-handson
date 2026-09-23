@@ -199,7 +199,7 @@ python keyless_openai_direct.py
 az resource update --ids $ACCOUNT_ID --set properties.disableLocalAuth=true --query "properties.disableLocalAuth" -o tsv
 python keyless_openai_direct.py
 ```
-- `true` が返ったあと、方式Aは成功し、方式Bは **403 `AuthenticationTypeDisabled`** になります。
+- `true` が返ったあと、方式Aは成功し、方式Bは **403 `AuthenticationTypeDisabled`** になります（環境によっては **401**「Access denied due to invalid subscription key or wrong API endpoint」になることもあります。どちらもキー方式が拒否されたという意味です）。
 - 反映は「通常数分、最大で数時間」です。まだ方式Bが通るときは、少し待って `python keyless_openai_direct.py` を再実行します。
 - 組織全体に強制したいときは、Azure Policy「Azure AI Services resources should have key access disabled」を使います。
 
@@ -228,9 +228,9 @@ az cognitiveservices account purge --name $ACCOUNT --resource-group $RG --locati
 - ⚠️ **ロールは上位スコープから継承されます。** サブスクリプションやリソースグループに `Foundry User` が付いていれば、リソース／プロジェクトに何も付けなくても呼べます。「なぜ動くのか」も手順6で確認してください。
 
 ## つまずき
-- **`403 Forbidden` / `401 PermissionDenied`**：ロール不足。上の表のロールを割り当て、**5分以上待って**再実行。`Owner` だけでは通りません。
+- **`403 Forbidden` / `401 PermissionDenied`**：ロール不足。上の表のロールを割り当て、**5分以上待って**再実行。`Owner` だけでは（Entra ID のトークンでは）通りません。Owner はキーを取り出せるのでキー方式なら通りますが、それはロールと無関係に入れてしまうというキーの性質です。
 - **`401 Unauthorized`（`audience is incorrect`）**：トークンの**宛先違い**。スコープは `https://ai.azure.com/.default`。`az login` していない場合もここ。
 - **`disableLocalAuth` 後にキー方式が 403**：期待どおりの動作です（`AuthenticationTypeDisabled`）。
-- **`Custom subdomain required`**：リソースにカスタムサブドメインが無い。トークン認証の前提条件です。
+- **カスタムサブドメインが無い**：トークン認証を受け付けず **401 Unauthorized** になる。カスタムサブドメインはトークン認証の前提条件で、あとから変更できません（手順3の `--custom-domain`）。
 - **`model not found`**：`MODEL_DEPLOYMENT` は**カタログ名ではなくデプロイ名**。
 - **キーを漏らしてしまった**：`az cognitiveservices account keys regenerate --key-name Key1`（Key2 も）で失効させます。⚠️ `disableLocalAuth=true` の**あと**だと再生成は失敗するので、順序は「再生成が先、無効化があと」です（`assign_role_disable_key.azcli` の 6）。

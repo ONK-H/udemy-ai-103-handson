@@ -6,7 +6,8 @@
 # --- 変数 (自分の環境に合わせて変更) ---
 # ⚠️ disableLocalAuth を変えるので、講座共通の rg-ai103 ではなく練習用の RG で行う（README 手順1〜5で作成）
 $RG      = "rg-ai103-l15"
-$FOUNDRY = "<README 手順1の $ACCOUNT>"     # Foundry(AIServices) リソース名
+$FOUNDRY = $ACCOUNT                        # Foundry(AIServices) リソース名（README 手順1の $ACCOUNT。
+#   別のシェルで開き直したときは $FOUNDRY = 'ai103-l15-12345' のように単一引用符で名前を入れる）
 $PROJECT = "ai103-l15-proj"               # プロジェクト名
 
 # 自分のオブジェクトID / リソースID を取得
@@ -101,12 +102,10 @@ az cognitiveservices account keys regenerate -n $FOUNDRY -g $RG --key-name Key2
 #         --query "key1 | length(@)" -o tsv のように長さだけ取り出す。
 
 # --- 後片付け ---
-# 1) キー無効化を元に戻す（この後のレッスンでキー方式を比較したい場合）
-# az resource update --ids $FOUNDRY_ID --set properties.disableLocalAuth=false
-#
-# 2) 割り当てたロールを外す
-# az role assignment delete --assignee-object-id $MY_ID --role "53ca6127-db72-4b80-b1b0-d745d6d5456d" --scope $PROJECT_ID
-# az role assignment delete --assignee-object-id $MY_ID --role "Cognitive Services User" --scope $FOUNDRY_ID
-#
-# ※ このレッスンはロール割り当て・キー無効化とも無料。推論を数回するだけなので
-#    リソースグループを削除する必要はない（後続レッスンでも同じリソースを使う）。
+# README 手順17 と同じ。練習用 RG ごと削除して purge する（ロールの割り当て先・キーもリソースと一緒に無くなる）。
+# $RG が講座共通の rg-ai103 ではないことを目で確かめてから実行する。
+# $RG
+# az group delete --name $RG --yes --no-wait
+# （数分待って削除が終わったら）
+# az cognitiveservices account list-deleted -o table
+# az cognitiveservices account purge --name $FOUNDRY --resource-group $RG --location japaneast
