@@ -75,6 +75,20 @@ def analyze_review(text: str) -> dict:
     return json.loads(response.output_text)
 
 
+def to_display(result: dict) -> str:
+    """画面で読みやすいように、entities の要素だけ1行1件にして整形する（中身は同じJSON）。"""
+    lines = [
+        "{",
+        f'  "sentiment": {json.dumps(result["sentiment"], ensure_ascii=False)},',
+        '  "entities": [',
+    ]
+    ents = [json.dumps(e, ensure_ascii=False) for e in result["entities"]]
+    lines += [f"    {e}{',' if i < len(ents) - 1 else ''}" for i, e in enumerate(ents)]
+    lines += ["  ],", f'  "summary": {json.dumps(result["summary"], ensure_ascii=False)}', "}"]
+    return "
+".join(lines)
+
+
 def main():
     with open("reviews.json", encoding="utf-8") as f:
         reviews = json.load(f)
@@ -89,7 +103,7 @@ def main():
         try:
             result = analyze_review(review)
             print("分析結果(JSON):")
-            print(json.dumps(result, ensure_ascii=False, indent=2))
+            print(to_display(result))
         except Exception as ex:
             print(f"[エラー] {ex}")
 
