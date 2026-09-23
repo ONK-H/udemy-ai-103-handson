@@ -1,0 +1,4 @@
+[
+  { "name": "codename-en", "properties": { "pattern": "Project Falcon", "isRegex": false } },
+  { "name": "codename-ja", "properties": { "pattern": "ファルコン計画", "isRegex": false } }
+]
