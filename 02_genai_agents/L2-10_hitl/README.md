@@ -1,52 +1,159 @@
 # L2-10 実践: 高リスク操作の前に人間承認を挟む（deterministic HITL）
 
-エージェントに**低リスク（読み取り）**と**高リスク（削除）**のツールを与え、高リスク関数は**アプリ側のコードが必ず**承認を要求します（モデルに承認判断を任せない＝ deterministic HITL）。
+エージェントに**低リスク（読み取り）**と**高リスク（削除）**の関数ツールを持たせ、高リスクの関数は**アプリ側のコードが必ず**人間の承認を求めます。承認するかどうかをモデルに判断させない、これが deterministic HITL（決定論的な Human-in-the-loop）です。
+
+> 対応レクチャー：実践 `L2-10-3`
+> 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）。会話とエージェントは `finally` で削除され、プロジェクトに残りません。
 
 ## ファイル構成
 | ファイル | 役割 |
 |---|---|
-| `main.py` | `get_record`（低リスク・自動実行）／`delete_record`（高リスク・承認必須）を持つエージェント |
+| `main.py` | `get_record`（低リスク・自動実行）／`delete_record`（高リスク・承認必須）を持つエージェント。承認ゲートと後片付け（`finally`） |
 | `.env.sample` | 環境変数の雛形 |
-| `requirements.txt` | Python 依存パッケージ |
+| `requirements.txt` | Python 依存パッケージ（`azure-ai-projects>=2.0.0` は 1.x と非互換） |
+| `README.md` | このファイル（手順とコマンド） |
 
 ## 前提
-- Azure サブスクリプション ／ `az login` 済み ／ Python 3.11+
-- Foundry プロジェクト作成済み・チャットモデルを1つデプロイ済み
+- L0-3（Hello, Foundry）を終えていること（講座共通のリソースグループ `rg-ai103`・Foundry リソース・プロジェクト `ai103-project`・Foundry User ロール）。
+- `az login` 済み ／ Python 3.11+
+- 関数ツール（Functions）を使うので、**モデルは `gpt-4.1-mini`** を使います。Foundry Agent Service の「Tool support by region and model」の表で、`gpt-4.1-mini` は Functions が Yes、`gpt-5.4` 系は No です。無ければ手順2でデプロイします（デプロイ自体は無料。課金は使ったトークン分だけ）。
 
-## 進め方
+## 進め方（コピペで実行できます）
+
+全部で9手順です。各手順のコードブロックを、そのままターミナルに貼り付けて実行します。手順1で決めた変数を後の手順で使うので、**同じターミナルで続けて**実行してください。
+
+| 手順 | やること |
+|---|---|
+| 1 | 共通リソースの名前を変数に入れる |
+| 2 | `gpt-4.1-mini` をデプロイする（あれば再利用） |
+| 3 | プロジェクトのエンドポイントを取得する |
+| 4 | 仮想環境を作って依存を入れる |
+| 5 | `.env` を用意する |
+| 6 | 削除を依頼して、**承認する**（`y`） |
+| 7 | もう一度削除を依頼して、**拒否する**（`n`） |
+| 8 | 読み取りを依頼する（承認なしで自動実行） |
+| 9 | 後片付けを確かめる |
+
+> コマンドは **PowerShell** 用です（Codespaces のターミナルで `pwsh` を選ぶ／Windows の PowerShell／Mac・Linux は PowerShell 7 を入れて `pwsh`）。行末の `` ` `` は行の継続です。
+>
+> 最初に、リポジトリのルートからこのフォルダーへ移動しておきます。
+> ```powershell
+> cd 02_genai_agents/L2-10_hitl
+> ```
+
+### 1. 共通リソースの名前を変数に入れる
+```powershell
+$RG = "rg-ai103"
+$FOUNDRY = az cognitiveservices account list --resource-group $RG --query "[?kind=='AIServices'] | [0].name" -o tsv
+$FOUNDRY
+```
+`ai103-foundry-<数字>` が表示されればOKです。
+
+### 2. `gpt-4.1-mini` をデプロイする（あれば再利用）
+```powershell
+az cognitiveservices account deployment create `
+  --name $FOUNDRY `
+  --resource-group $RG `
+  --deployment-name gpt-4.1-mini `
+  --model-name gpt-4.1-mini `
+  --model-version 2025-04-14 `
+  --model-format OpenAI `
+  --sku-name GlobalStandard `
+  --sku-capacity 10 `
+  --query "{name:name, state:properties.provisioningState}" -o table
+```
+`gpt-4.1-mini  Succeeded` が出ればOKです。すでに同じ名前のデプロイがあるときも、同じ設定なら `Succeeded` が返ります（後続のレッスンでも使うので、消さずに残します）。
+> 関数ツールをエージェントに持たせるときは、**モデルがそのツールに対応しているか**を公式の対応表で先に確かめます。表で No のモデルは、たまたま動いても前提にしません。
+
+### 3. プロジェクトのエンドポイントを取得する
+```powershell
+az cognitiveservices account project show `
+  --name $FOUNDRY `
+  --resource-group $RG `
+  --project-name ai103-project `
+  --query 'properties.endpoints."AI Foundry API"' -o tsv
+```
+返ってきた URL（末尾が `/api/projects/ai103-project`）を、手順5で `.env` に貼ります。
+
+### 4. 仮想環境を作って依存を入れる
 ```powershell
 python -m venv .venv
-. .venv\Scripts\Activate.ps1      # macOS/Linux: source .venv/bin/activate
+./.venv/bin/Activate.ps1
 pip install -r requirements.txt
-copy .env.sample .env             # macOS/Linux: cp .env.sample .env
-# .env を編集：PROJECT_ENDPOINT・MODEL_DEPLOYMENT
+```
+2行目は Codespaces（Linux）の PowerShell 用です。Windows の PowerShell では `.\.venv\Scripts\Activate.ps1` にします。
 
-# 1) 既定（引数なし）：高リスクの削除を依頼 → 承認プロンプトが出る
+### 5. `.env` を用意する
+```powershell
+cp .env.sample .env
+code .env
+```
+開いた `.env` の `PROJECT_ENDPOINT=` に手順3のエンドポイントを貼って保存します。`MODEL_DEPLOYMENT=gpt-4.1-mini` は最初から入っています。
+> ⚠️ このレッスンのキー名は `PROJECT_ENDPOINT` と `MODEL_DEPLOYMENT` です。前のレッスンの `.env` を丸ごと写すと、`MODEL_DEPLOYMENT` が `gpt-5.4` のままになります。
+
+### 6. 削除を依頼して、承認する（`y`）
+```powershell
 python main.py
+```
+引数なしで実行すると、「レコード 1002 を削除して。」と依頼します。モデルが削除の関数を呼びたいと返すと、**実行する前に**承認のプロンプトで止まります。`y` と入力して Enter を押します。
+```text
+USER> レコード 1002 を削除して。
+[ツール要求] delete_record({'record_id': '1002'})
+[承認] delete_record({'record_id': '1002'}) を実行しますか？ (y/N): y
+[実行] delete_record -> {'deleted': '1002'}
+AI> レコード 1002 を削除しました。
 
-# 2) 引数で低リスクの読み取りを依頼 → 承認なしで自動実行される
+DB の中身: {'1001': '山田'}
+会話とエージェントを削除しました（残り: 0 件）
+```
+- `[ツール要求]` は、モデルが返した「この関数をこの引数で呼びたい」という依頼です。**モデルは関数を実行しません**。実行するのはアプリ（`main.py`）です。
+- `DB の中身` から 1002 が消えています。データベースはインメモリの辞書なので、次に実行すると元（1001・1002）に戻ります。
+
+### 7. もう一度削除を依頼して、拒否する（`n`）
+```powershell
+python main.py
+```
+今度は承認のプロンプトで `n` と入力して Enter を押します（`y` 以外は、空の Enter も含めてすべて拒否です）。
+```text
+[承認] delete_record({'record_id': '1002'}) を実行しますか？ (y/N): n
+[拒否] delete_record は実行しませんでした
+AI> レコード1002の削除は承認されていないため実行できません。
+
+DB の中身: {'1001': '山田', '1002': '佐藤'}
+```
+拒否したときも、アプリは「拒否された」という結果（`denied_by_human`）をモデルに返します。だからモデルは、拒否を踏まえて説明できます。1002 は残っています。
+
+### 8. 読み取りを依頼する（承認なしで自動実行）
+```powershell
 python main.py "レコード 1001 を見せて。"
 ```
+```text
+[ツール要求] get_record({'record_id': '1001'})
+[自動実行] get_record -> {'record_id': '1001', 'name': '山田'}
+AI> レコード1001の名前は「山田」です。
+```
+読み取りは低リスクなので、承認を挟まずに実行します。**リスクに応じて、人間の関与の度合い（oversight）を切り替える**のがこのサンプルの設計です。
 
-## 期待される出力（例）
-引数なし（削除）：
-```
-USER> レコード 1002 を削除して。
-[承認] delete_record({'record_id': '1002'}) を実行しますか？ (y/N): y
-AI> レコード 1002 を削除しました。
-```
-引数あり（読み取り）：
-```
-USER> レコード 1001 を見せて。
-[自動実行] get_record({'record_id': '1001'}) -> {'record_id': '1001', 'name': '山田'}
-AI> レコード 1001 は山田さんです。
-```
+### 9. 後片付けを確かめる
+手順6〜8の最後の行 `会話とエージェントを削除しました（残り: 0 件）` が確認です。`main.py` は `finally` で会話とエージェントの版を削除し、同じ名前のエージェントが残っていないかを数えて表示します。`gpt-4.1-mini` のデプロイは後続のレッスンでも使うので残します。
+
+## ポイント（試験の論点）
+- **deterministic HITL**：高リスクで不可逆な操作は、モデルではなく**オーケストレーター（アプリ）のコード**で承認を強制する。instructions で「削除の前には確認して」と書くだけでは決定論的ではない。
+- **モデルは関数を実行しない**。`function_call`（依頼）を返すだけで、実行してその結果（`function_call_output`）を返すのはアプリ。だからその間に承認を挟める。
+- **拒否も結果として返す**（`denied_by_human`）。モデルは拒否を踏まえて応答できる。
+- 承認の実装は3通り：アプリ側のロジック（このサンプル）／Agent Framework の tool approval／MCP ツールの `require_approval`。
 
 ## つまずき
-- **承認プロンプトが出ない**：モデルが `delete_record` ではなく `get_record` を選んでいないか確認（指示文を「削除して」など明確にする）。
-- **`PROJECT_ENDPOINT が未設定です`**：`.env` の作成・値の入力を確認。
-- **往復が5回で止まる**：`MAX_TURNS = 5`（無限ループ防止）。それ以上の往復が必要なタスクでは値を増やす。
-- このサンプルのデータベースはインメモリ（`_DB` 辞書）です。**再実行するたびに 1001/1002 のレコードに初期化**されます（削除しても次回起動時は復活）。
+| 症状 | 対処 |
+|---|---|
+| 承認プロンプトが出ない | モデルが `delete_record` ではなく `get_record` を選んでいないか（依頼文を「削除して」など明確に）。`HIGH_RISK` の名前と関数名が一致しているか |
+| `DeploymentNotFound`（404） | `.env` の `MODEL_DEPLOYMENT` が手順2のデプロイ名 `gpt-4.1-mini` と一致しているか |
+| `401`/`403` | `az login` 済みか、プロジェクトに **Foundry User** ロールがあるか |
+| `PROJECT_ENDPOINT が未設定です` | `.env` の作成・値の入力を確認 |
+| 往復が5回で止まる | `MAX_TURNS = 5`（無限ループ防止）。長い往復が必要なら値を増やす |
+| 承認に時間をかけたら失敗した | 関数呼び出しの実行は作成から10分で期限切れになる（Learn の function calling）。人の判断に時間がかかる設計では、承認待ちを別の仕組みで持つ |
 
 ## 後片付け
-- エージェント・会話は `finally` で毎回削除されます。データベースはインメモリなので後片付け不要です。
+- エージェントと会話は実行のたびに `finally` で削除されます（手順9）。データベースはインメモリなので後片付け不要です。
+- `gpt-4.1-mini` のデプロイは後続のレッスン（L2-7・L2-9 など）でも使うので残します。デプロイ自体は課金されません（Standard 系は使ったトークン分だけ）。
+- レッスンフォルダーの `.venv` と `.env` は、不要になったら消してかまいません（`.env` はコミットされません）。

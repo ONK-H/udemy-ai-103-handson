@@ -6,7 +6,7 @@
 認証はキーレス。finally で後片付け。
 
 使い方:
-    python main.py                        # 既定：「レコード 1002 を削除して。」（承認プロンプトが出る）
+    python main.py                           # 既定：「レコード 1002 を削除して。」（承認プロンプトが出る。y で実行、それ以外は拒否）
     python main.py "レコード 1001 を見せて。"  # 読み取りは承認なしで自動実行
 """
 
@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 load_dotenv()
 PROJECT_ENDPOINT = os.getenv("PROJECT_ENDPOINT")
 MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-4.1-mini")
+AGENT_NAME = "hitl-agent"
 MAX_TURNS = 5  # ツール呼び出しの往復の上限（無限ループ防止）
 
 # 高リスク関数の集合（アプリ側で決定的に判定する＝モデル任せにしない）
@@ -50,6 +51,12 @@ tools = [
 ]
 
 
+def ask_approval(name: str, args: dict) -> bool:
+    """人間に承認を求める。y だけを承認とみなし、それ以外（空の Enter を含む）は拒否する。"""
+    answer = input(f"[承認] {name}({args}) を実行しますか？ (y/N): ")
+    return answer.strip().lower() == "y"
+
+
 def main() -> None:
     if not PROJECT_ENDPOINT:
         raise SystemExit("PROJECT_ENDPOINT が未設定です。.env を確認してください。")
@@ -58,19 +65,20 @@ def main() -> None:
     project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCredential())
     openai = project.get_openai_client()
 
-    agent = None
-    conversation = None
+    agent = conversation = None
     try:
         agent = project.agents.create_version(
-            agent_name="hitl-agent",
+            agent_name=AGENT_NAME,
             definition=PromptAgentDefinition(
                 model=MODEL_DEPLOYMENT,
-                instructions="ユーザーの依頼に応じて get_record / delete_record を使ってください。",
+                instructions=("ユーザーの依頼に応じて get_record / delete_record を使ってください。"
+                              "答えは1〜2行で簡潔に書いてください。"),
                 tools=tools))
+        print(f"エージェント作成: name={agent.name}, version={agent.version}")
         conversation = openai.conversations.create()
         ref = {"agent_reference": {"name": agent.name, "type": "agent_reference"}}
 
-        print(f"USER> {user_input}")
+        print(f"\nUSER> {user_input}")
         res = openai.responses.create(input=user_input, conversation=conversation.id, extra_body=ref)
 
         for _ in range(MAX_TURNS):  # function_call が出なくなるまで往復する
@@ -79,13 +87,18 @@ def main() -> None:
                 if getattr(item, "type", None) != "function_call":
                     continue
                 args = json.loads(item.arguments)
+                print(f"[ツール要求] {item.name}({args})")  # モデルは「呼びたい」と依頼するだけ
                 # ★ deterministic HITL：高リスク関数はアプリ側で必ず承認を挟む
                 if item.name in HIGH_RISK:
-                    ok = input(f"[承認] {item.name}({args}) を実行しますか？ (y/N): ").strip().lower() == "y"
-                    result = TOOL_IMPL[item.name](**args) if ok else {"status": "denied_by_human", "name": item.name}
+                    if ask_approval(item.name, args):
+                        result = TOOL_IMPL[item.name](**args)
+                        print(f"[実行] {item.name} -> {result}")
+                    else:
+                        result = {"status": "denied_by_human", "name": item.name}
+                        print(f"[拒否] {item.name} は実行しませんでした")
                 else:
                     result = TOOL_IMPL[item.name](**args)  # 低リスクは自動実行
-                    print(f"[自動実行] {item.name}({args}) -> {result}")
+                    print(f"[自動実行] {item.name} -> {result}")
                 input_list.append(FunctionCallOutput(
                     type="function_call_output", call_id=item.call_id,
                     output=json.dumps(result, ensure_ascii=False)))
@@ -94,13 +107,17 @@ def main() -> None:
             res = openai.responses.create(input=input_list, conversation=conversation.id, extra_body=ref)
 
         print(f"AI> {res.output_text}")
+        print(f"\nDB の中身: {_DB}")
     except Exception as ex:  # 教育目的の素朴なエラーハンドリング
         print(f"[エラー] {ex}")
     finally:
+        # 会話と、作成したエージェントの版を削除し、残っていないことを確かめる
         if conversation:
             openai.conversations.delete(conversation_id=conversation.id)
         if agent:
             project.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
+            left = [a.name for a in project.agents.list() if a.name == agent.name]
+            print(f"会話とエージェントを削除しました（残り: {len(left)} 件）")
 
 
 if __name__ == "__main__":
