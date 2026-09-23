@@ -1,19 +1,18 @@
-# L1-4 実践(3/3): コスト按分のためのタグ付与 (Azure CLI / PowerShell)
+# L1-4 実践(3/3): コスト按分のためのタグ付与 (Azure CLI / PowerShell) ※ README 手順8〜10 をまとめたもの（参考）
 # タグは Cost Management でコストをプロジェクト/環境/コストセンター別に集計するための基本ツール。
 # 事前に: az login 済み / 対象リソースに Contributor 以上 / 値は自分の環境に置き換える。
 # ※ PowerShell 前提。1 行ずつ実行するのが分かりやすい。
 
 # --- 変数 (自分の環境に合わせて変更) ---
-$RG = "rg-ai103-handson"
-$FOUNDRY = "<foundry-resource-name>"          # Foundry(Cognitive Services / AIServices) リソース名
-$SUB = "<your-subscription-id>"
+$RG = "rg-ai103"                             # 講座共通のリソースグループ
+$FOUNDRY = az cognitiveservices account list --resource-group $RG --query "[?kind=='AIServices'] | [0].name" -o tsv
 
 # 1) リソースグループにタグを付ける (merge = 既存タグを保持して追加)
 #    ⚠️ az tag create は「全置換」で、既存タグが消える。使い回すリソースグループでは merge を使う。
 az tag update `
-  --resource-id "/subscriptions/$SUB/resourceGroups/$RG" `
+  --resource-id (az group show --name $RG --query id -o tsv) `
   --operation merge `
-  --tags project=ai103-course env=dev costcenter=training owner=you@example.com
+  --tags project=ai103-course env=dev costcenter=training
 
 # 2) Foundry リソース単体にタグを付ける
 #    ⚠️ リソースは「リソースグループのタグを継承しない」。コスト集計に効かせるには

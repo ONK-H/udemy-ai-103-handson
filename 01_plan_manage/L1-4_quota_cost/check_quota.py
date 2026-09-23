@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SUBSCRIPTION_ID = os.getenv("AZURE_SUBSCRIPTION_ID")
-LOCATION = os.getenv("QUOTA_LOCATION", "eastus")
+LOCATION = os.getenv("QUOTA_LOCATION", "japaneast")
 API_VERSION = "2026-07-01"  # ※揮発情報。az provider show で現行の GA を確認する
 TIERS_API_VERSION = "2025-10-01-preview"  # quotaTiers は執筆時点でプレビュー
 
@@ -26,6 +26,11 @@ TIERS_API_VERSION = "2025-10-01-preview"  # quotaTiers は執筆時点でプレ�
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-5.4")
 MODEL_VERSION = os.getenv("MODEL_VERSION", "2026-03-05")
 MODEL_FORMAT = os.getenv("MODEL_FORMAT", "OpenAI")
+
+# 表示の絞り込み（行数が多いので、既定は MODEL_NAME の行だけ／空き容量は QUOTA_LOCATION の行だけ）
+# 全件を見たいときは .env で USAGE_FILTER= と空にする／CAPACITY_ALL=1 にする
+USAGE_FILTER = os.getenv("USAGE_FILTER", MODEL_NAME)
+CAPACITY_ALL = os.getenv("CAPACITY_ALL", "0") == "1"
 
 ARM = "https://management.azure.com"
 
@@ -75,14 +80,16 @@ def list_usages():
     usages = res.json().get("value", [])
 
     print(f"\n===== クォータ消費 / 上限 ({LOCATION}) =====")
-    shown = 0
-    for item in usages:
-        if item.get("limit", 0) > 0:
-            name = item["name"]["localizedValue"]  # 例: "Tokens Per Minute (thousands) - gpt-5.4"
-            print(f"{name}: {item['currentValue']}/{item['limit']}")
-            shown += 1
-    if shown == 0:
-        print("(limit > 0 のクォータ行がありません。リージョン/サブスクを確認してください)")
+    rows = [u for u in usages if u.get("limit", 0) > 0]
+    if USAGE_FILTER:
+        # 名前は "... - gpt-5.4 - GlobalStandard" の形。" - " で区切った要素がモデル名と一致する行だけ
+        rows = [u for u in rows if USAGE_FILTER in u["name"]["localizedValue"].split(" - ")]
+        print(f"(モデル {USAGE_FILTER} の行だけ表示。全件は USAGE_FILTER を空にする)")
+    for item in rows:
+        name = item["name"]["localizedValue"]  # 例: "One Thousand Tokens Per Minute - gpt-5.4 - GlobalStandard"
+        print(f"{name}: {item['currentValue']}/{item['limit']}")
+    if not rows:
+        print("(limit > 0 のクォータ行がありません。リージョン/サブスク/USAGE_FILTER を確認してください)")
 
 
 def list_model_capacities():
@@ -98,13 +105,18 @@ def list_model_capacities():
     capacities = res.json().get("value", [])
 
     print(f"\n===== {MODEL_NAME} ({MODEL_VERSION}) の Standard 系 空き容量 =====")
-    shown = 0
-    for item in capacities:
-        props = item.get("properties", {})
-        if props.get("availableCapacity", 0) > 0 and "Standard" in props.get("skuName", ""):
-            print(f"{item['location']} ({props['skuName']}): {props['availableCapacity']} 利用可能")
-            shown += 1
-    if shown == 0:
+    rows = [
+        item for item in capacities
+        if item.get("properties", {}).get("availableCapacity", 0) > 0
+        and "Standard" in item.get("properties", {}).get("skuName", "")
+    ]
+    here = rows if CAPACITY_ALL else [i for i in rows if i["location"] == LOCATION]
+    for item in here:
+        props = item["properties"]
+        print(f"{item['location']} ({props['skuName']}): {props['availableCapacity']} 利用可能")
+    if not CAPACITY_ALL:
+        print(f"(ほかに {len(rows) - len(here)} 件のデプロイ先に空きあり。全件は CAPACITY_ALL=1)")
+    if not rows:
         print("(空き容量のある Standard デプロイ先が見つかりませんでした)")
 
 
