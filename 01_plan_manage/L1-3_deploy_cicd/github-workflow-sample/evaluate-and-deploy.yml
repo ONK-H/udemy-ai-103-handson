@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 jobs:
-  # ===== 1) 評価ゲート: 品質/安全性が基準を満たすかを確認（満たさなければ後続をブロック）=====
+  # ===== 1) 評価ゲート: テストクエリで品質/安全性を採点し、結果を Summary に出す =====
   evaluate:
     runs-on: ubuntu-latest
     steps:
@@ -52,10 +52,13 @@ jobs:
           agent-ids: ${{ vars.AGENT_IDS }}
           # 評価データセット（評価器＋テストクエリ）
           data-path: ${{ github.workspace }}/01_plan_manage/L1-3_deploy_cicd/eval/dataset.json
+      # ⚠️ ai-agent-evals は結果を Summary に出すだけで、点数が低くてもジョブは失敗しない。
+      #    点数で止めたいときは、基準に届かなければ exit 1 するステップをここに足す
+      #    （needs が deploy を止めるのは、このジョブが「失敗」したときだけ）。
 
   # ===== 2) デプロイ: main へのマージ時のみ。評価ゲートを通過してから実行 =====
   deploy:
-    needs: evaluate                       # 評価ジョブの成功が前提（＝ゲート）
+    needs: evaluate                       # 評価ジョブが成功したときだけ実行（＝ゲート）
     if: github.event_name == 'push'       # PR ではデプロイしない
     runs-on: ubuntu-latest
     steps:
@@ -76,13 +79,13 @@ jobs:
             az deployment group what-if \
               --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
               --template-file 01_plan_manage/L1-3_deploy_cicd/main.bicep \
-              --parameters foundryName=${{ vars.FOUNDRY_NAME }} deploymentName=${{ vars.DEPLOYMENT_NAME }}
+              --parameters foundryName=${{ vars.FOUNDRY_NAME }} projectName=${{ vars.PROJECT_NAME }} deploymentName=${{ vars.DEPLOYMENT_NAME }}
 
-      - name: Deploy（Bicep 適用: apply）
+      - name: Deploy（Bicep を適用）
         uses: azure/cli@v2
         with:
           inlineScript: |
             az deployment group create \
               --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
               --template-file 01_plan_manage/L1-3_deploy_cicd/main.bicep \
-              --parameters foundryName=${{ vars.FOUNDRY_NAME }} deploymentName=${{ vars.DEPLOYMENT_NAME }}
+              --parameters foundryName=${{ vars.FOUNDRY_NAME }} projectName=${{ vars.PROJECT_NAME }} deploymentName=${{ vars.DEPLOYMENT_NAME }}

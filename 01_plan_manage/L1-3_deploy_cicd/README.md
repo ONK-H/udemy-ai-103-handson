@@ -205,6 +205,8 @@ az cognitiveservices account purge --name $ACCOUNT --resource-group $RG --locati
 ## CI/CD 雛形（任意・次のレクチャー）
 
 - `github-workflow-sample/evaluate-and-deploy.yml` をリポジトリ直下 `.github/workflows/` にコピーし、OIDC（キーレス）と各リポジトリ変数を設定すると、PR で評価ゲート・main で評価→デプロイが動きます。
+- 動かすには、ほかに次の3つが要ります：①評価対象の **Foundry エージェント**（`AGENT_IDS` に `名前:バージョン` で指定）②フェデレーション資格情報を付けた ID への**ロール割り当て**（評価とデプロイに必要な権限）③デプロイ先の**練習用リソースグループ**（講座共通の `rg-ai103` は指定しない）。
+- `ai-agent-evals` は採点結果を Summary に出すだけで、**点数が低くてもジョブは失敗しません**。点数で deploy を止めたいときは、基準に届かなければ `exit 1` するステップを evaluate ジョブに足します。
 
 ## 注意（揮発情報）
 - **モデル名/バージョン・SKU・API バージョン**は変動します。`list-models` と公式ドキュメントで都度確認。
