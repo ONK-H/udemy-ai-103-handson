@@ -148,7 +148,7 @@ Remove-Item Env:IMAGE_DETAIL
 このレッスンでは Azure のリソースを作っていないので、削除するものはありません（課金は使ったトークンの分だけで、数円程度です）。`gpt-5.4` のデプロイは後のレッスンでも使うので、残しておきます。
 
 ## 注意点（試験の論点）
-- 画像は、Chat Completions の `content` を**リスト**にして、`{"type": "text"}` と `{"type": "image_url"}` を並べて渡します。手元のファイルは **base64 データURI**（`data:image/jpeg;base64,...`）、公開されている画像なら URL をそのまま渡せます。複数の画像を並べることもできます。
+- 画像は、Chat Completions の `content` を**リスト**にして、`{"type": "text"}` と `{"type": "image_url"}` を並べて渡します。手元のファイルは **base64 データURI**（`data:image/jpeg;base64,...`）、公開されている画像なら URL をそのまま渡せます。複数の画像を並べることもできます（Chat Completions は1回に10枚まで）。**Responses API でも `input_image` として同じように画像を渡せます**。
 - 同じ画像入力の上で、**プロンプトを変えるだけ**でキャプション／視覚QA／alt-text を作り分けられます。定型の項目を大量の文書・画像から信頼度つきで抜き出したいなら、Azure Content Understanding を使います。
 - **画像も入力トークンとして課金**されます。`detail: low` で安く、`high` で細部まで読ませます。
 - MIME タイプは、`main.py` では拡張子が `.png` かどうかだけで決めています（それ以外は `image/jpeg` 扱い）。
