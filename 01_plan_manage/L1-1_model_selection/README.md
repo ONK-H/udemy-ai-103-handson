@@ -2,7 +2,6 @@
 
 同じプロンプトを **「大きいモデル」と「小さいモデル」** に投げ、**出力・レイテンシ・トークン数（≒コスト）** を並べて比較する CLI です。座学で学ぶ「精度／レイテンシ／コストはトレードオフ」を自分の目で確かめるのが狙いです。
 
-> 対応レクチャー：座学 `L1-1-1`（Foundry のモデル地図）／`L1-1-2`（モデル選択）、実践 `L1-1-3` ／ 対応スキル：S1.a-1
 > 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）。APIキーは使いません。
 
 ## ファイル構成
@@ -13,19 +12,94 @@
 | `requirements.txt` | Python 依存パッケージ |
 
 ## 前提
-- Azure サブスクリプション ／ `az login` 済み ／ Python 3.11+
-- Microsoft Foundry プロジェクト作成済み（L0-3）。プロジェクトエンドポイントを控えておく
-- **比較する2モデルをデプロイ済み**（既定は `gpt-5.4` と `gpt-5.4-nano`）
-- ロール：プロジェクトに **Foundry User**（旧 Azure AI User）相当
+- L0-3（Hello, Foundry）を終えていること。L0-3 で作った**講座共通のリソース**（リソースグループ `rg-ai103`・Foundry リソース・プロジェクト `ai103-project`・`gpt-5.4-nano` のデプロイ・自分への **Foundry User** ロール）をそのまま使います。
+- `az login` 済み ／ Python 3.11+
 
-## 進め方（PowerShell）
+## 進め方（コピペで実行できます）
+
+全部で7手順です。各手順のコードブロックを、そのままターミナルに貼り付けて実行します。
+
+| 手順 | やること |
+|---|---|
+| 1 | 共通の Foundry リソースの名前を確かめる |
+| 2 | 比較用の大きいモデル（`gpt-5.4`）をデプロイする |
+| 3 | 2つのデプロイがそろったか確かめる |
+| 4 | プロジェクトのエンドポイントを取得する |
+| 5 | 仮想環境を作って依存を入れる |
+| 6 | `.env` を用意する |
+| 7 | 実行する |
+
+> コマンドは **PowerShell** 用です（Codespaces のターミナルで `pwsh` を選ぶ／Windows の PowerShell／Mac・Linux は PowerShell 7 を入れて `pwsh`）。行末の `` ` `` は行の継続です。
+>
+> 最初に、リポジトリのルートからこのフォルダーへ移動しておきます。
+> ```powershell
+> cd 01_plan_manage/L1-1_model_selection
+> ```
+
+### 1. 共通の Foundry リソースの名前を確かめる
+L0-3 で作った Foundry リソースの名前（末尾に乱数が付いています）を、変数 `$FOUNDRY` に入れて表示します。
+```powershell
+$FOUNDRY = az cognitiveservices account list --resource-group rg-ai103 --query "[?kind=='AIServices'] | [0].name" -o tsv
+$FOUNDRY
+```
+`ai103-foundry-<数字>` が表示されればOKです。手順2〜4はこの変数を使うので、**同じターミナルで続けて**実行してください。
+
+### 2. 比較用の大きいモデル（`gpt-5.4`）をデプロイする
+小さいモデル `gpt-5.4-nano` は L0-3 でデプロイ済みです。比較相手の大きいモデルを追加します。
+```powershell
+az cognitiveservices account deployment create `
+  --name $FOUNDRY `
+  --resource-group rg-ai103 `
+  --deployment-name gpt-5.4 `
+  --model-name gpt-5.4 `
+  --model-version "2026-03-05" `
+  --model-format OpenAI `
+  --sku-capacity 10 `
+  --sku-name GlobalStandard `
+  --query "{name:name, state:properties.provisioningState}" -o table
+```
+- `State` が `Succeeded` になればOKです。デプロイを置いておくだけでは課金されません（呼び出した分だけ）。
+- `insufficient quota` で失敗したら、下の「クォータ不足でモデルをデプロイできないとき」を見てください（`gpt-5-mini` と `gpt-4.1-mini` の組み合わせに読み替えます）。
+- `--model-version` は更新されます。通らないときは `az cognitiveservices model list --location japaneast --query "[?model.name=='gpt-5.4'].model.version" -o tsv` で現行の値を確認してください。
+
+### 3. 2つのデプロイがそろったか確かめる
+```powershell
+az cognitiveservices account deployment list `
+  --name $FOUNDRY `
+  --resource-group rg-ai103 `
+  --query "[].{name:name, model:properties.model.name, sku:sku.name}" -o table
+```
+`gpt-5.4` と `gpt-5.4-nano` の2行が出れば準備完了です。ここに出る `name`（デプロイ名）を、手順6で `.env` に書きます。
+
+### 4. プロジェクトのエンドポイントを取得する
+```powershell
+az cognitiveservices account project show `
+  --name $FOUNDRY `
+  --resource-group rg-ai103 `
+  --project-name ai103-project `
+  --query 'properties.endpoints."AI Foundry API"' -o tsv
+```
+返ってきた URL（末尾が `/api/projects/ai103-project`）を、手順6で `.env` に貼ります。L0-3 の `.env` と同じ値です。
+
+### 5. 仮想環境を作って依存を入れる
 ```powershell
 python -m venv .venv
-. .venv\Scripts\Activate.ps1     # macOS/Linux: source .venv/bin/activate
+./.venv/bin/Activate.ps1
 pip install -r requirements.txt
-copy .env.sample .env            # macOS/Linux: cp .env.sample .env
-# .env を編集してから:
+```
+2行目は Codespaces（Linux）の PowerShell 用です。Windows の PowerShell では `.\.venv\Scripts\Activate.ps1` にします。
 
+### 6. `.env` を用意する
+```powershell
+cp .env.sample .env
+code .env
+```
+開いた `.env` の `PROJECT_ENDPOINT=` に手順4のエンドポイントを貼って保存します。
+- 比較する2つのデプロイ名は `MODEL_LARGE=gpt-5.4` と `MODEL_SMALL=gpt-5.4-nano` として、最初から入っています。
+- ⚠️ **L0-3 の `.env` とはキー名が違います**（L0-3 は `MODEL_DEPLOYMENT` の1つ、こちらは `MODEL_LARGE` と `MODEL_SMALL` の2つ）。L0-3 の `.env` をそのままコピーすると、2つとも既定値のままになるので注意してください。
+
+### 7. 実行する
+```powershell
 python main.py
 ```
 
@@ -97,15 +171,19 @@ MODEL_SMALL=gpt-4.1-mini    # 非推論モデル。速く・安い＝「小さ�
 |---|---|
 | `isn't available due to insufficient quota` | 上記「クォータ不足でモデルをデプロイできないとき」を参照 |
 | `Quota exceeded`（割り当てはあるが空きなし） | Manage → Quota で他デプロイの TPM を減らして空きを作る（反映まで最大15分） |
-| `DefaultAzureCredential` で認証エラー | `az login` 済みか、プロジェクトに **Foundry User** が付いているか確認 |
+| `DefaultAzureCredential` で認証エラー／403 | `az login` 済みか、L0-3 の手順8で **Foundry User** を付けたか確認 |
 | `model not found` / 404 | `.env` のモデル名が**デプロイ名**と一致しているか（カタログ名ではなくデプロイ名） |
 | `usage` が `None` | SDK／モデルにより戻り値の形が異なる。`getattr` で防御済み |
 | 429（レート制限） | TPM/RPM 超過。少し待つ。詳細は L1-4 |
 | エンドポイント形式エラー | `PROJECT_ENDPOINT` が `.../api/projects/<project>` 形式か確認 |
 
-## 後片付け（課金回避）
-- このハンズオンは**推論を数回**するだけ（数円程度）。デプロイを置いておくだけでは課金されません（従量課金の Standard 系）。
-- 検証専用なら、リソースグループごと削除：`az group delete --name rg-ai103-handson`
+## 後片付け
+- このハンズオンは**推論を数回**するだけです。デプロイを置いておくだけでは課金されません（従量課金の GlobalStandard）。
+- リソースグループ `rg-ai103` は**講座の最後まで共通で使うので、消さないでください**。
+- `gpt-5.4` のデプロイだけを片付けたい場合は、次を実行します（以降のレッスンで必要になったら、また手順2で作り直せます）。
+  ```powershell
+  az cognitiveservices account deployment delete --name $FOUNDRY --resource-group rg-ai103 --deployment-name gpt-5.4
+  ```
 
 ## 注意（揮発情報）
 - **モデルID・世代は更新が速い**。デプロイ前に Foundry のカタログで現行IDを確認してください。
