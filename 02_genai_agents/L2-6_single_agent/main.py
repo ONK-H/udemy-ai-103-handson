@@ -40,7 +40,7 @@ def main() -> None:
     project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCredential())
     openai = project.get_openai_client()
 
-    agent = None
+    agent = conversation = None
     try:
         # 1) 組み込みツール（Code Interpreter）付きの単一エージェントを作成
         agent = project.agents.create_version(
@@ -71,11 +71,13 @@ def main() -> None:
     except Exception as ex:  # 教育目的の素朴なエラーハンドリング
         print(f"[エラー] {ex}")
     finally:
-        # 3) 後片付け（作成したエージェントのバージョンを削除し、残っていないことを確かめる）
+        # 3) 後片付け（会話と、作成したエージェントの版を削除し、残っていないことを確かめる）
+        if conversation:
+            openai.conversations.delete(conversation.id)
         if agent:
             project.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
             left = [a.name for a in project.agents.list() if a.name == agent.name]
-            print(f"\nエージェントを削除しました（残り: {len(left)} 件）")
+            print(f"\n会話とエージェントを削除しました（残り: {len(left)} 件）")
 
 
 if __name__ == "__main__":
