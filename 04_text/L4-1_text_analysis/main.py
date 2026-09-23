@@ -85,8 +85,7 @@ def to_display(result: dict) -> str:
     ents = [json.dumps(e, ensure_ascii=False) for e in result["entities"]]
     lines += [f"    {e}{',' if i < len(ents) - 1 else ''}" for i, e in enumerate(ents)]
     lines += ["  ],", f'  "summary": {json.dumps(result["summary"], ensure_ascii=False)}', "}"]
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 def main():
