@@ -135,7 +135,10 @@ az role assignment create `
   --assignee-object-id $MY_ID --assignee-principal-type User `
   --scope $ACCOUNT_ID `
   --query "{role:roleDefinitionName, principalType:principalType}" -o table
+az role assignment list --assignee $MY_ID --scope $PROJECT_ID --include-inherited `
+  --query "[].{role:roleDefinitionName, scope:scope}" -o table
 ```
+- 作成直後の応答には `role` 列が入らないので、3行目で一覧を出して確かめます（プロジェクトに効いているロールが、継承元も含めて並びます）。
 - `Cognitive Services OpenAI User` は **OpenAI モデルだけ**に効きます。アカウントスコープの `Foundry User` でも同じデータアクションが入ります。
 - ⚠️ **反映は即時ではありません。** 公式ガイダンスは「最初の呼び出しまで **5分以上待つ**」です。
 
