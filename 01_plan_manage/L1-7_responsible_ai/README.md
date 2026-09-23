@@ -1,6 +1,6 @@
 # L1-7 実践: ガードレールを設定し、危険入力をブロック＋安全性評価を実行
 
-モデルのデプロイに**カスタムのガードレール**（旧コンテンツフィルター）を割り当て、危険な入力や社外秘の語が**止まる様子**をコードで確かめます。後半では、**安全性評価（risk & safety 評価器）**で回答の有害度を採点します。ガードレールもデプロイも評価用のリソースも、すべてコマンドで作り、最後に消します。
+モデルのデプロイに**カスタムのガードレール**（旧コンテンツフィルター）を割り当て、危険な入力や社外秘の語が**止まる様子**をコードで確かめます。後半では、**安全性評価**（risk & safety 評価器）で回答の有害度を採点します。ガードレールもデプロイも評価用のリソースも、すべてコマンドで作り、最後に消します。
 
 > 対応レクチャー：実践 `L1-7-6`
 > 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）。APIキーは使いません。
@@ -93,7 +93,7 @@ az rest --method put --url "$API/raiPolicies/ai103-strict?$V" --body "@guardrail
   --query "{name:name, base:properties.basePolicyName, mode:properties.mode}" -o table
 ```
 Name が `ai103-strict` と表示されればOKです。`guardrail/guardrail_strict.json` を開くと、ガードレールの中身が読めます。
-- `contentFilters`：4つの害（Hate／Sexual／Violence／Selfharm）を、入力（`Prompt`）と出力（`Completion`）の両方で見ます。`severityThreshold` が **`Low` なら「low 以上を止める」**ので、既定（`Medium`＝medium 以上を止める）より**多くを止めます**。
+- `contentFilters`：4つの害（Hate／Sexual／Violence／Selfharm）を、入力（`Prompt`）と出力（`Completion`）の両方で見ます。`severityThreshold` が `Low` なら **low 以上を止める**ので、既定（`Medium`＝medium 以上を止める）より**多くを止めます**。
 - `Jailbreak`：プロンプト攻撃（脱獄）を検出して止めます（Prompt Shields）。
 - `customBlocklists`：手順3のブロックリストを、入力と出力の両方に効かせます。
 - ポータルでは **ビルド → ガードレール** で同じものを作れます（重大度はスライダーで、右に寄せるほど軽い内容から止めます）。API では、ガードレールは **RAI ポリシー**（`raiPolicies`）というリソースです。
