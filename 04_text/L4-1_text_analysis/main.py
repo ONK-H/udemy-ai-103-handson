@@ -5,6 +5,7 @@ Responses API の structured outputs（json_schema / strict）で、
 """
 
 import os
+import sys
 import json
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
@@ -13,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PROJECT_ENDPOINT = os.getenv("PROJECT_ENDPOINT")
-MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-5-mini")
+MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-5.4")
 
 # 出力スキーマ（JSON Schema）。構造化出力の制約：
 #   - すべてのフィールドを required にする
@@ -78,7 +79,11 @@ def main():
     with open("reviews.json", encoding="utf-8") as f:
         reviews = json.load(f)
 
-    for i, review in enumerate(reviews, 1):
+    # 引数でレビューの番号を選べる（例: python main.py 1 3）。省略すると全件
+    picks = [int(a) for a in sys.argv[1:]] or range(1, len(reviews) + 1)
+    print(f"モデル（デプロイ名）: {MODEL_DEPLOYMENT}")
+    for i in picks:
+        review = reviews[i - 1]
         print(f"\n=== レビュー {i} ===")
         print(f"入力: {review}")
         try:
