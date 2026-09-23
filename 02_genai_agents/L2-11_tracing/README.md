@@ -150,7 +150,7 @@ invoke_agent traced-agent:1	1343	True	responsesapi
 chat gpt-4.1-mini-2025-04-14	1168	True	responsesapi
 ```
 - 1列目が span の名前、2列目が所要時間（ミリ秒）、3列目が成功かどうか、4列目がその span を記録した側です。
-- `inventory-app` は**このアプリ（client-side）**、`responsesapi` は **Foundry のサービス側（server-side）**の span です。アプリが `get_openai_client()` で取ったクライアントはトレースの文脈を送るので、両方が同じ `operation_Id` の1本のトレースにつながります。
+- `inventory-app` は**このアプリ（client-side）**、`responsesapi` は **Foundry のサービス側**（server-side）の span です。アプリが `get_openai_client()` で取ったクライアントはトレースの文脈を送るので、両方が同じ `operation_Id` の1本のトレースにつながります。
 - **`get_inventory` を含め、すべての span が `True`（成功）です**。失敗が例外ではなく戻り値に出ているので、成功・失敗の列だけでは見つかりません。
 - 何も表示されないときは、もう数分待って再実行します。
 
