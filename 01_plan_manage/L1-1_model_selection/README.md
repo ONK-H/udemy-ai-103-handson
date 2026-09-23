@@ -141,14 +141,29 @@ az rest --method get `
 | `text-embedding-3-small` | 1,000,000 TPM |
 
 ### 対処1：使えるモデルに差し替える（推奨）
-`.env` を次のように変更すれば、このハンズオンは**そのまま実施できます**。
+手順2の代わりに、最下位ティアでも既定クォータが付く2つのモデルをデプロイします（手順1の `$FOUNDRY` を使うので同じターミナルで実行）。
+```powershell
+az cognitiveservices account deployment create `
+  --name $FOUNDRY --resource-group rg-ai103 `
+  --deployment-name gpt-5-mini --model-name gpt-5-mini --model-version "2025-08-07" `
+  --model-format OpenAI --sku-capacity 10 --sku-name GlobalStandard `
+  --query "{name:name, state:properties.provisioningState}" -o table
+az cognitiveservices account deployment create `
+  --name $FOUNDRY --resource-group rg-ai103 `
+  --deployment-name gpt-4.1-mini --model-name gpt-4.1-mini --model-version "2025-04-14" `
+  --model-format OpenAI --sku-capacity 10 --sku-name GlobalStandard `
+  --query "{name:name, state:properties.provisioningState}" -o table
+```
+バージョンは更新されます。通らないときは `az cognitiveservices model list --location japaneast --query "[?model.name=='gpt-5-mini' || model.name=='gpt-4.1-mini'].{name:model.name,version:model.version}" -o table` で確認してください（2026-09-23 時点：gpt-5-mini は 2025-08-07、gpt-4.1-mini は 2025-04-14）。
+
+そのうえで、手順6の `.env` を次のように変更すれば、このハンズオンは**そのまま実施できます**。
 
 ```
 MODEL_LARGE=gpt-5-mini      # 推論モデル。思考トークンを出すので遅く・消費が多い＝「大きい側」
 MODEL_SMALL=gpt-4.1-mini    # 非推論モデル。速く・安い＝「小さい側」
 ```
 
-推論モデル対非推論モデルになるため、**レイテンシとトークン数の差はむしろはっきり出ます**。
+推論モデル（思考のトークンも出力に数える）対非推論モデルになるため、**レイテンシとトークン数の差はむしろはっきり出ます**。既定の `gpt-5.4` と `gpt-5.4-nano` はどちらも推論モデルです。
 ※ `gpt-4.1-mini` はライフサイクルが Legacy（廃止予定 2027-04-14。2026-09-19 確認）です。実行時点の廃止スケジュールを確認してください。
 
 ### 対処2：クォータ増加を申請する
