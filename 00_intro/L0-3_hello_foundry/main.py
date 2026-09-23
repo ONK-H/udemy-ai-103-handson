@@ -6,7 +6,7 @@ Responses API でチャットモデルを1回呼んで応答を表示する、�
 前提:
 - `az login` 済み（ローカルの資格情報をキーレス認証に使う）
 - プロジェクトにモデルをデプロイ済み（.env の MODEL_DEPLOYMENT = デプロイ名）
-- プロジェクトに対する「Foundry User」ロール（自分で作ったプロジェクトなら通常OK）
+- 自分のアカウントに「Foundry User」ロール（CLI で作った場合は自動で付かないので README の手順8で付ける）
 
 実行: python main.py
 """
@@ -43,7 +43,7 @@ def main() -> None:
     except Exception as ex:  # 教育目的でまとめて捕捉（401=認証 / 403=ロール不足 / 404=デプロイ名違い を切り分ける）
         print(f"エラー: {type(ex).__name__}: {ex}")
         print("  - 401: トークン未取得/期限切れ。`az login` を確認")
-        print("  - 403: ロール不足。プロジェクトに Foundry User を割り当てたか確認")
+        print("  - 403: ロール不足。Foundry User を割り当てたか確認（README の手順8）")
         print("  - 404: デプロイ名違い。.env の MODEL_DEPLOYMENT が実際のデプロイ名と一致するか確認")
 
 
