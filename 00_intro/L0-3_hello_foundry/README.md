@@ -51,7 +51,7 @@ az rest --method get `
   --url "https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/providers/Microsoft.CognitiveServices/quotaTiers?api-version=2026-05-01" `
   --query "value[].properties" -o table
 ```
-`CurrentTierName` に今のティアが出ます。**最下位ティア（Free Tier / Tier 0）**だった場合、既定クォータが付くのは `gpt-4.1-mini` / `gpt-5-mini` / `o4-mini` / `text-embedding-3-small` の4モデルだけです。その場合は以下の `gpt-5.4-nano` を `gpt-4.1-mini` に読み替えてください（`.env` の `MODEL_DEPLOYMENT` も同じ名前にします。手順・学習目的は変わりません）。
+`CurrentTierName` に今のティアが出ます。**最下位ティア**（Free Tier / Tier 0）だった場合、既定クォータが付くのは `gpt-4.1-mini` / `gpt-5-mini` / `o4-mini` / `text-embedding-3-small` の4モデルだけです。その場合は以下の `gpt-5.4-nano` を `gpt-4.1-mini` に読み替えてください（`.env` の `MODEL_DEPLOYMENT` も同じ名前にします。手順・学習目的は変わりません）。
 
 > ⚠️ `quotaTiers` の api-version は更新が速く、通る値が入れ替わります（2026-09-23 実測：`2026-05-01` は通り、`2023-05-01` や `2026-09-01` は `InvalidResourceType` の404）。404 のエラーメッセージに「サポートされる api-version の一覧」が出るので、その中の値に差し替えてください。
 
@@ -125,7 +125,7 @@ pip install -r requirements.txt
 - 2行目は Codespaces（Linux）の PowerShell 用です。Windows の PowerShell は `.\.venv\Scripts\Activate.ps1`、bash / zsh は `source .venv/bin/activate` にします。
 - プロンプトの先頭に `(.venv)` が付けば有効化できています。
 
-> ⚠️ `azure-ai-projects` は **2.x（新／Foundry プロジェクト）**を使います。1.x（classic／Hub）とは互換性がありません。`pip show azure-ai-projects` で2.0以上を確認してください。
+> ⚠️ `azure-ai-projects` は **2.x**（新／Foundry プロジェクト）を使います。1.x（classic／Hub）とは互換性がありません。`pip show azure-ai-projects` で2.0以上を確認してください。
 
 ### 9. `.env` を用意する
 ```powershell
