@@ -143,7 +143,7 @@ python main.py "開封後に返品はできる？"
 - **既定のチャンク設定**：チャンク 800 トークン・重なり 400 トークン、埋め込みは `text-embedding-3-large`（256次元）、コンテキストに入れるチャンクは最大20（[File search tool](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/file-search)）。
 - **検索はハイブリッド**：クエリの書き換え → 分割 → キーワード検索とセマンティック検索の併用 → 再ランク付け。
 - **ベクトルストアはエージェントに1つまで**（会話にも1つまで）。1つのベクトルストアには最大 10,000 ファイル。
-- **引用は `annotations` の `file_citation`** に入る。引用が付かないときは、File Search が呼ばれていないか、文書に該当する内容が無い（必ず検索させたいなら `tool_choice` を `required` にする）。
+- **引用は `annotations` の `file_citation`** に入る。引用が付かないときは、File Search が呼ばれていないか、文書に該当する内容が無い（必ず検索させたいなら `tool_choice` を `required` にする。`required` は「ツールを1つ以上呼ぶ」の意味で、このエージェントのツールは File Search だけなので、File Search が必ず呼ばれる）。
 - 既存の Azure AI Search のインデックスを検索したいなら File Search ではなく **Azure AI Search ツール**。
 
 ## つまずき
@@ -152,7 +152,8 @@ python main.py "開封後に返品はできる？"
 | `DeploymentNotFound`（404） | `MODEL_DEPLOYMENT` が**デプロイ名**と一致しているか（手順2の name） |
 | `401`/`403` | `az login` 済みか、プロジェクトに **Foundry User** ロールがあるか |
 | 取り込みが終わらない・`status` が `completed` 以外 | 文書サイズやネットワークによって時間がかかる。対応していない形式・文字コードでないか（テキスト系は UTF-8 など） |
-| `[引用] 0 件` | モデルが File Search を呼ばなかったか、該当する内容が無い。必ず呼ばせたいなら `tool_choice="required"` |
+| `[引用] 0 件` | モデルが File Search を呼ばなかったか、該当する内容が無い。ツールが File Search だけなら `tool_choice="required"` で必ず呼ばせられる |
+| 後片付けの行で 1 件以上残っている | 前の実行の取り残し（再実行は自分が作った版しか消さない）。Foundry ポータルのプロジェクトで削除する |
 | `文書が見つかりません` | `DOC_PATH`（既定 `product_info.pdf`）が実行時のカレントディレクトリから見えているか（このフォルダーで実行する） |
 
 ## 後片付け
