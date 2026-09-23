@@ -14,7 +14,7 @@ load_dotenv()
 
 ENDPOINT = os.getenv("AZURE_LANGUAGE_ENDPOINT")
 
-# キーレス認証（Cognitive Services Language Reader 相当のロールが必要）
+# キーレス認証。リソースに Foundry User（または Cognitive Services Language Reader）のロールが必要
 client = TextAnalyticsClient(endpoint=ENDPOINT, credential=DefaultAzureCredential())
 
 
