@@ -18,7 +18,7 @@ Microsoft Foundry プロジェクトに**キーレス**（`DefaultAzureCredentia
 
 ## 進め方（コピペで実行できます）
 
-全部で10手順です。各手順のコードブロックを、そのままターミナルに貼り付けて実行します。
+全部で11手順です。各手順のコードブロックを、そのままターミナルに貼り付けて実行します。
 
 | 手順 | やること |
 |---|---|
@@ -29,9 +29,10 @@ Microsoft Foundry プロジェクトに**キーレス**（`DefaultAzureCredentia
 | 5 | プロジェクトを作る |
 | 6 | チャットモデルをデプロイする |
 | 7 | プロジェクトのエンドポイントを取得する |
-| 8 | 仮想環境を作って依存を入れる |
-| 9 | `.env` を用意する |
-| 10 | 実行する |
+| 8 | 自分に Foundry User ロールを付ける |
+| 9 | 仮想環境を作って依存を入れる |
+| 10 | `.env` を用意する |
+| 11 | 実行する |
 
 > コマンドは **PowerShell**（Codespaces のターミナルで `pwsh` を選ぶ／Windows の PowerShell）向けです。行末の `` ` `` は行の継続です。bash / zsh で使う場合は `` ` `` を `\` に置き換えてください。
 >
@@ -77,7 +78,7 @@ az cognitiveservices account create `
   --allow-project-management true `
   --query "{name:name, kind:kind, state:properties.provisioningState}" -o table
 ```
-- 手順5〜7も `$FOUNDRY` を使います。**同じターミナルで続けて**実行してください。ターミナルを開き直した場合は、`$FOUNDRY = az cognitiveservices account list -g rg-ai103 --query "[0].name" -o tsv` で取り直せます。
+- 手順5〜8も `$FOUNDRY` を使います。**同じターミナルで続けて**実行してください。ターミナルを開き直した場合は、`$FOUNDRY = az cognitiveservices account list -g rg-ai103 --query "[0].name" -o tsv` で取り直せます。
 - 使用済みの名前だと `CustomDomainInUse` になります。1行目からもう一度実行すれば、別の乱数で作り直せます。
 - `--assign-identity` が無いと、次のプロジェクト作成が `managed identity must be enabled` で失敗します。
 - ⚠️ **既存アカウントに対してこのコマンドを再実行すると** `(BadRequest) PublicNetworkAccess is required for this resouce`（Azure側のスペルミスもそのまま）で失敗します。`--public-network-access Enabled` という引数は存在しません（`unrecognized arguments`）。**既にリソースがある場合は `create` を再実行せず**、`az cognitiveservices account show --name $FOUNDRY --resource-group rg-ai103` で状態を確認するだけにしてください。
@@ -117,10 +118,23 @@ az cognitiveservices account project show `
   --project-name ai103-project `
   --query 'properties.endpoints."AI Foundry API"' -o tsv
 ```
-- 返ってきた URL（末尾が `/api/projects/ai103-project`）を、手順9で `.env` に貼ります。
+- 返ってきた URL（末尾が `/api/projects/ai103-project`）を、手順10で `.env` に貼ります。
 - ⚠️ **Build > Models のデプロイ詳細に出るエンドポイントとは別物**です。そちらを貼ると `main.py` は404になります。ポータルなら、プロジェクトの**ホーム（welcome）画面**に出る「プロジェクト エンドポイント」を使ってください。
 
-### 8. 仮想環境を作って依存を入れる
+### 8. 自分に Foundry User ロールを付ける
+コードからモデルを呼ぶ（データプレーンの操作）には、**Foundry User** ロールが必要です。ポータルで作った場合は自動で付きますが、**CLI や SDK で作った場合は付きません**。Owner や Contributor もモデルの呼び出し権限は含みません。自分のアカウントに、手順4のリソースを範囲として付けます。
+```powershell
+az role assignment create `
+  --role "Foundry User" `
+  --assignee (az ad signed-in-user show --query id -o tsv) `
+  --scope (az cognitiveservices account show --name $FOUNDRY --resource-group rg-ai103 --query id -o tsv) `
+  --query "{principalType:principalType, created:createdOn}" -o table
+```
+- `principalType` が `User` の行が出れば割り当てできています。反映まで数分かかることがあります（手順11で 403 が出たら、少し待ってから再実行）。
+- ロールの割り当てには、サブスクリプションかリソースグループで **Owner**（または User Access Administrator）が必要です。権限が無い場合は、管理者にこのロールの割り当てを依頼してください。
+- `Foundry User` という名前が見つからない（`Role 'Foundry User' doesn't exist`）場合は、旧名の反映待ちです。`--role` にロール ID `53ca6127-db72-4b80-b1b0-d745d6d5456d` を指定してください。
+
+### 9. 仮想環境を作って依存を入れる
 ```powershell
 python -m venv .venv
 ./.venv/bin/Activate.ps1
@@ -131,14 +145,14 @@ pip install -r requirements.txt
 
 > ⚠️ `azure-ai-projects` は **2.x**（新／Foundry プロジェクト）を使います。1.x（classic／Hub）とは互換性がありません。`pip show azure-ai-projects` で2.0以上を確認してください。
 
-### 9. `.env` を用意する
+### 10. `.env` を用意する
 ```powershell
 cp .env.sample .env
 code .env
 ```
 開いた `.env` の `PROJECT_ENDPOINT=` に手順7のエンドポイントを貼り、`MODEL_DEPLOYMENT` を手順6のデプロイ名（`gpt-5.4-nano`）にして保存します（`.env` は `.gitignore` 対象です。コードに直書き・コミットしないでください）。
 
-### 10. 実行する
+### 11. 実行する
 ```powershell
 python main.py
 ```
@@ -154,7 +168,7 @@ python main.py
 
 ## つまずき
 - **`401`（認証エラー）**：`az login` していない／トークン期限切れ。`az login` をやり直し、`az account show` で正しいサブスクリプションか確認。
-- **`403`**：プロジェクトに **Foundry User** ロールが割り当たっているか確認。
+- **`403`**：手順8の **Foundry User** ロールが付いているか確認（付けた直後は反映に数分かかることがある）。
 - **`404`（モデルが見つからない）**：`.env` の `MODEL_DEPLOYMENT` は**カタログ名ではなくデプロイ名**。実際のデプロイ名と一致しているか確認。
 - **`az cognitiveservices account create` が `(InsufficientQuota)` で失敗**：モデルのTPMではなく**リソース作成レベルの別クォータ**です。無料試用版・学生サブスクリプションで起きやすく、従量課金への切り替えかサポートリクエストが必要です。
 - **`insufficient quota` でデプロイできない**：手順2のクォータティア確認に戻り、`gpt-4.1-mini` 等の最下位ティアで使えるモデルに読み替えてください。
