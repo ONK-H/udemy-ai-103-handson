@@ -34,7 +34,7 @@ Microsoft Foundry プロジェクトに**キーレス**（`DefaultAzureCredentia
 | 10 | `.env` を用意する |
 | 11 | 実行する |
 
-> コマンドは **PowerShell**（Codespaces のターミナルで `pwsh` を選ぶ／Windows の PowerShell）向けです。行末の `` ` `` は行の継続です。bash / zsh で使う場合は `` ` `` を `\` に置き換えてください。
+> コマンドは **PowerShell** 用です（Codespaces のターミナルで `pwsh` を選ぶ／Windows の PowerShell／Mac・Linux は PowerShell 7 を入れて `pwsh`）。行末の `` ` `` は行の継続です。手順4の変数や手順8の `( … )` は PowerShell の書き方なので、bash / zsh ではなく PowerShell で進めてください。
 >
 > 最初に、リポジトリのルートからこのフォルダーへ移動しておきます。
 > ```powershell
