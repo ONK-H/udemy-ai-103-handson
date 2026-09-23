@@ -56,34 +56,38 @@ az rest --method get `
 > ⚠️ `quotaTiers` の api-version は更新が速く、通る値が入れ替わります（2026-09-23 実測：`2026-05-01` は通り、`2023-05-01` や `2026-09-01` は `InvalidResourceType` の404）。404 のエラーメッセージに「サポートされる api-version の一覧」が出るので、その中の値に差し替えてください。
 
 ### 3. リソースグループを作る
+このリソースグループと、次に作る Foundry リソース・プロジェクトは、**講座全体で共通**に使います（以降のレッスンは、ここで作るプロジェクトのエンドポイントを使い回します）。
 ```powershell
-az group create --name rg-ai103-hello --location japaneast `
+az group create --name rg-ai103 --location japaneast `
   --query "{name:name, state:properties.provisioningState}" -o table
 ```
 
 ### 4. Foundry リソースを作る
+1行目で、Foundry リソースの名前を変数 `$FOUNDRY` に決めます。この名前はカスタムドメイン（`https://<名前>.services.ai.azure.com`）にもなるので**世界で一意**である必要があり、末尾に乱数を付けています。
 ```powershell
+$FOUNDRY = "ai103-foundry-$(Get-Random -Minimum 10000 -Maximum 99999)"
 az cognitiveservices account create `
-  --name ai103-hello-foundry `
-  --resource-group rg-ai103-hello `
+  --name $FOUNDRY `
+  --resource-group rg-ai103 `
   --kind AIServices `
   --sku S0 `
   --location japaneast `
-  --custom-domain ai103-hello-foundry `
+  --custom-domain $FOUNDRY `
   --assign-identity `
   --allow-project-management true `
   --query "{name:name, kind:kind, state:properties.provisioningState}" -o table
 ```
-- `--custom-domain` はグローバルに一意です（使用済みなら `CustomDomainInUse`。名前を変えて、以降の手順の `ai103-hello-foundry` もすべて読み替えてください）。
+- 手順5〜7も `$FOUNDRY` を使います。**同じターミナルで続けて**実行してください。ターミナルを開き直した場合は、`$FOUNDRY = az cognitiveservices account list -g rg-ai103 --query "[0].name" -o tsv` で取り直せます。
+- 使用済みの名前だと `CustomDomainInUse` になります。1行目からもう一度実行すれば、別の乱数で作り直せます。
 - `--assign-identity` が無いと、次のプロジェクト作成が `managed identity must be enabled` で失敗します。
-- ⚠️ **既存アカウントに対してこのコマンドを再実行すると** `(BadRequest) PublicNetworkAccess is required for this resouce`（Azure側のスペルミスもそのまま）で失敗します。`--public-network-access Enabled` という引数は存在しません（`unrecognized arguments`）。**既にリソースがある場合は `create` を再実行せず**、`az cognitiveservices account show --name ai103-hello-foundry --resource-group rg-ai103-hello` で状態を確認するだけにしてください。
+- ⚠️ **既存アカウントに対してこのコマンドを再実行すると** `(BadRequest) PublicNetworkAccess is required for this resouce`（Azure側のスペルミスもそのまま）で失敗します。`--public-network-access Enabled` という引数は存在しません（`unrecognized arguments`）。**既にリソースがある場合は `create` を再実行せず**、`az cognitiveservices account show --name $FOUNDRY --resource-group rg-ai103` で状態を確認するだけにしてください。
 
 ### 5. プロジェクトを作る
 ```powershell
 az cognitiveservices account project create `
-  --name ai103-hello-foundry `
-  --resource-group rg-ai103-hello `
-  --project-name hello-foundry-project `
+  --name $FOUNDRY `
+  --resource-group rg-ai103 `
+  --project-name ai103-project `
   --location japaneast `
   --query "{name:name, state:properties.provisioningState}" -o table
 ```
@@ -92,8 +96,8 @@ az cognitiveservices account project create `
 ### 6. チャットモデルをデプロイする
 ```powershell
 az cognitiveservices account deployment create `
-  --name ai103-hello-foundry `
-  --resource-group rg-ai103-hello `
+  --name $FOUNDRY `
+  --resource-group rg-ai103 `
   --deployment-name gpt-5.4-nano `
   --model-name gpt-5.4-nano `
   --model-version "2026-03-17" `
@@ -108,12 +112,12 @@ az cognitiveservices account deployment create `
 ### 7. プロジェクトのエンドポイントを取得する
 ```powershell
 az cognitiveservices account project show `
-  --name ai103-hello-foundry `
-  --resource-group rg-ai103-hello `
-  --project-name hello-foundry-project `
+  --name $FOUNDRY `
+  --resource-group rg-ai103 `
+  --project-name ai103-project `
   --query 'properties.endpoints."AI Foundry API"' -o tsv
 ```
-- 返ってきた URL（末尾が `/api/projects/hello-foundry-project`）を、手順9で `.env` に貼ります。
+- 返ってきた URL（末尾が `/api/projects/ai103-project`）を、手順9で `.env` に貼ります。
 - ⚠️ **Build > Models のデプロイ詳細に出るエンドポイントとは別物**です。そちらを貼ると `main.py` は404になります。ポータルなら、プロジェクトの**ホーム（welcome）画面**に出る「プロジェクト エンドポイント」を使ってください。
 
 ### 8. 仮想環境を作って依存を入れる
@@ -141,7 +145,7 @@ python main.py
 
 ## 期待される出力（例）
 ```
-✅ キーレスで接続: https://ai103-hello-foundry.services.ai.azure.com/api/projects/hello-foundry-project
+✅ キーレスで接続: https://ai103-foundry-12345.services.ai.azure.com/api/projects/ai103-project
 
 ----- モデル応答 -----
 （モデルからの説明文が続く）
@@ -156,7 +160,7 @@ python main.py
 - **`insufficient quota` でデプロイできない**：手順2のクォータティア確認に戻り、`gpt-4.1-mini` 等の最下位ティアで使えるモデルに読み替えてください。
 
 ## 後片付け
-このプロジェクトは以降のレッスンでも使います。学習を続けるなら残しておいて構いません（Standard デプロイは呼び出さない限り課金されません）。完全に片付ける場合：
-```bash
-az group delete --name rg-ai103-hello --yes --no-wait
+ここで作ったリソースグループ・Foundry リソース・プロジェクトは、**講座の最後まで共通で使います**。消さずに残しておいてください（Standard デプロイは呼び出さない限り課金されません）。学習を長く中断する場合や、講座を終えて完全に片付ける場合だけ、次を実行します：
+```powershell
+az group delete --name rg-ai103 --yes --no-wait
 ```
