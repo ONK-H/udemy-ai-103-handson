@@ -1,12 +1,13 @@
-# L1-5 実践 (3/3): ロール割り当て ＋ local auth 無効化（キーレス化の仕上げ）
+# L1-5 実践 (3/3): ロール割り当て ＋ local auth 無効化（キーレス化の仕上げ）※ README 手順6〜8・14〜16 と同じ内容（参考）
 # ※ PowerShell (pwsh 7+) 前提。1 行ずつ実行するのが分かりやすい。
 #    Windows / macOS / Linux / GitHub Codespaces のいずれでも同じコマンドで動く。
 # ※ ロール割り当て・local auth 無効化には十分な権限（Owner / User Access Administrator 等）が必要。
 
 # --- 変数 (自分の環境に合わせて変更) ---
-$RG      = "rg-ai103-handson"
-$FOUNDRY = "<foundry-resource-name>"      # Foundry(Cognitive Services / AIServices) リソース名
-$PROJECT = "<foundry-project-name>"       # プロジェクト名
+# ⚠️ disableLocalAuth を変えるので、講座共通の rg-ai103 ではなく練習用の RG で行う（README 手順1〜5で作成）
+$RG      = "rg-ai103-l15"
+$FOUNDRY = "<README 手順1の $ACCOUNT>"     # Foundry(AIServices) リソース名
+$PROJECT = "ai103-l15-proj"               # プロジェクト名
 
 # 自分のオブジェクトID / リソースID を取得
 $MY_ID      = az ad signed-in-user show --query id -o tsv
