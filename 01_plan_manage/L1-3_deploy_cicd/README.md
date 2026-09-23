@@ -2,15 +2,14 @@
 
 モデルデプロイを **CLI／Bicep（IaC）で再現**し、**スモークテスト**で動作確認、さらに **GitHub Actions の雛形**で「評価ゲート → デプロイ」の流れを体験するハンズオンです。
 
-> 対応レクチャー：座学 `L1-3-1`〜`L1-3-5`／実践 `L1-3-6`（CLI・Bicep・スモークテスト）・`L1-3-7`（評価ゲート付き CI/CD） ／ 対応スキル：S1.b-1,2,3,4
 > 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）。APIキーは使いません。
 
 ## ファイル構成
 | ファイル | 役割 |
 |---|---|
-| `deploy_model.azcli` | **Azure CLI** で Foundry リソース＋プロジェクト＋モデルデプロイを作成（手順を1行ずつ実行） |
+| `deploy_model.azcli` | README 手順1〜8（CLI で作る）をスクリプトにまとめたもの（参考） |
 | `main.bicep` | **IaC（Bicep）**：同じ構成を宣言的にコード化（`accounts`／`accounts/projects`／`accounts/deployments`） |
-| `deploy_bicep.azcli` | Bicep の `what-if`（変更プレビュー）→ `create`（適用）コマンド |
+| `deploy_bicep.azcli` | README 手順9〜10（Bicep の what-if → 適用）をまとめたもの（参考） |
 | `main.py` | デプロイの**スモークテスト**（キーレスで推論し、デプロイの健全性を確認） |
 | `.env.sample` | `main.py` 用の環境変数雛形（`PROJECT_ENDPOINT` / `DEPLOYMENT_NAME`） |
 | `requirements.txt` | Python 依存パッケージ |
@@ -18,40 +17,187 @@
 | `github-workflow-sample/evaluate-and-deploy.yml` | **GitHub Actions 雛形**：PR で評価ゲート、main で評価→デプロイ |
 
 ## 前提
-- Azure サブスクリプション ／ `az login` 済み ／ Azure CLI 2.80.0 以上（`az cognitiveservices` は本体同梱で拡張は不要。`account project` は 2.80.0 で追加。古ければ `az upgrade`）
-- Python 3.11+
-- 出力の整形は az 組み込みの `--query`（JMESPath）＋ `-o table/tsv/json` を使用（`jq` などの外部ツールは不要）
-- シェルは **PowerShell** を前提（`.azcli` は PowerShell の変数記法 `$RG = "..."`・継続行はバッククォート ` で記述）。bash の場合は変数代入を `RG="..."`、継続行を `\` に読み替える。
+- L0-3（Hello, Foundry）を終えていること（`az login` 済み・Python 3.11+・Azure CLI 2.80.0 以上）
+- このレッスンは **「Foundry リソースを作ること」そのものが主題**なので、講座共通のリソース（`rg-ai103`）は使わず、**練習用のリソースグループ `rg-ai103-l13` に作って、最後に丸ごと消します**。共通のリソースには一切触れません。
+- 作成には、サブスクリプションかリソースグループで **Contributor 以上**が必要です。
 
-## 進め方（どちらか or 両方）
-**A. CLI で作る**
-1. `deploy_model.azcli` の変数（`$RG` / `$ACCOUNT` / `$LOCATION` 等）を自分の値に置換。
-2. 上から1コマンドずつ実行（手順4の `list-models` でモデル名/バージョンを確認してから手順5を実行）。
+## 進め方（コピペで実行できます）
 
-**B. Bicep（IaC）で作る**
-1. `deploy_bicep.azcli` の変数を置換し、`what-if` → `create` を実行。
-2. 出力（`projectEndpoint` / `deploymentNameOut`）を控える。`projectEndpoint` が `.env` の `PROJECT_ENDPOINT` に入る値（同時に出る `foundryEndpoint` はアカウント単位で別物）。
+全部で14手順です。各手順のコードブロックを、そのままターミナルに貼り付けて実行します。手順1で決めた変数を後の手順で使うので、**同じターミナルで続けて**実行してください。
 
-> ⚠️ A と B は**同じ構成**を作ります。両方を試すなら、片方は `what-if`（プレビュー）までに留めると、同名リソースの重複・衝突を避けられます。
+| 手順 | やること |
+|---|---|
+| 1 | 練習用の名前を変数に決める |
+| 2 | 練習用のリソースグループを作る |
+| 3 | Foundry リソースを作る |
+| 4 | キー認証を無効にする（キーレス強制） |
+| 5 | プロジェクトを作る |
+| 6 | 使えるモデルを確かめる |
+| 7 | モデルをデプロイする |
+| 8 | デプロイの状態を確かめる |
+| 9 | Bicep で差分を見る（what-if） |
+| 10 | Bicep を適用する |
+| 11 | 自分に Foundry User ロールを付ける |
+| 12 | 仮想環境を作って依存を入れる |
+| 13 | `.env` を用意してスモークテストを流す |
+| 14 | 後片付け（練習用のリソースグループを消す） |
 
-**共通: スモークテスト（PowerShell）**
+> コマンドは **PowerShell** 用です（Codespaces のターミナルで `pwsh` を選ぶ／Windows の PowerShell／Mac・Linux は PowerShell 7 を入れて `pwsh`）。行末の `` ` `` は行の継続です。
+>
+> 最初に、リポジトリのルートからこのフォルダーへ移動しておきます。
+> ```powershell
+> cd 01_plan_manage/L1-3_deploy_cicd
+> ```
+
+### 1. 練習用の名前を変数に決める
+Foundry リソースの名前はサブドメイン（`https://<名前>.services.ai.azure.com`）になるので**世界で一意**にする必要があり、末尾に乱数を付けます。
+```powershell
+$RG = "rg-ai103-l13"
+$LOCATION = "japaneast"
+$ACCOUNT = "ai103-l13-$(Get-Random -Minimum 10000 -Maximum 99999)"
+$PROJECT = "ai103-l13-proj"
+$DEPLOYMENT = "chat"
+$ACCOUNT
+```
+
+### 2. 練習用のリソースグループを作る
+```powershell
+az group create --name $RG --location $LOCATION `
+  --query "{name:name, state:properties.provisioningState}" -o table
+```
+
+### 3. Foundry リソースを作る
+```powershell
+az cognitiveservices account create `
+  --name $ACCOUNT `
+  --resource-group $RG `
+  --kind AIServices `
+  --sku S0 `
+  --location $LOCATION `
+  --custom-domain $ACCOUNT `
+  --allow-project-management true `
+  --assign-identity `
+  --query "{name:name, kind:kind, state:properties.provisioningState}" -o table
+```
+- `--kind AIServices` が Foundry リソース、`--allow-project-management` がプロジェクトを作れるようにする指定、`--custom-domain` が Entra ID 認証に必要なサブドメイン、`--assign-identity` がマネージド ID です。
+
+### 4. キー認証を無効にする（キーレス強制）
+`az cognitiveservices account update` にはキー認証を無効にするオプションが無いので、汎用の `az resource update` で `properties.disableLocalAuth` を設定します。
+```powershell
+az resource update `
+  --ids (az cognitiveservices account show --name $ACCOUNT --resource-group $RG --query id -o tsv) `
+  --set properties.disableLocalAuth=true `
+  --query "properties.disableLocalAuth" -o tsv
+```
+`true` が返れば、この Foundry リソースは Entra ID（キーレス）でしか呼べなくなります（反映には数分かかることがあります）。
+
+### 5. プロジェクトを作る
+```powershell
+az cognitiveservices account project create `
+  --name $ACCOUNT `
+  --resource-group $RG `
+  --project-name $PROJECT `
+  --location $LOCATION `
+  --query "{name:name, state:properties.provisioningState}" -o table
+```
+
+### 6. 使えるモデルを確かめる
+モデル名・バージョン・SKU は更新が速いので、デプロイの前にこのリソースで使える値を確かめます。
+```powershell
+az cognitiveservices account list-models `
+  --name $ACCOUNT `
+  --resource-group $RG `
+  --query "[?name=='gpt-5.4-nano'].{name:name, version:version, format:format}" -o table
+```
+
+### 7. モデルをデプロイする
+```powershell
+az cognitiveservices account deployment create `
+  --name $ACCOUNT `
+  --resource-group $RG `
+  --deployment-name $DEPLOYMENT `
+  --model-name gpt-5.4-nano `
+  --model-version "2026-03-17" `
+  --model-format OpenAI `
+  --sku-name GlobalStandard `
+  --sku-capacity 10 `
+  --query "{name:name, state:properties.provisioningState}" -o table
+```
+デプロイ名 `chat` が、コードから呼ぶときに `model` に渡す名前になります（カタログのモデル名ではありません）。
+
+### 8. デプロイの状態を確かめる
+```powershell
+az cognitiveservices account deployment show `
+  --name $ACCOUNT `
+  --resource-group $RG `
+  --deployment-name $DEPLOYMENT `
+  --query "{state:properties.provisioningState, model:properties.model.name, version:properties.model.version, upgrade:properties.versionUpgradeOption}" -o table
+```
+`upgrade`（バージョン自動更新ポリシー）は CLI では読み取りだけで、変更は REST／Azure PowerShell／ポータルで行います。
+
+### 9. Bicep で差分を見る（what-if）
+手順3〜7で作ったものと同じ構成を、`main.bicep` で宣言しています。同じリソースグループに対して **what-if** を実行すると、「適用したら何が変わるか」だけが表示され、何も作られません（CI/CD の PR 段階に相当）。
+```powershell
+az deployment group what-if `
+  --resource-group $RG `
+  --template-file main.bicep `
+  --parameters foundryName=$ACCOUNT projectName=$PROJECT deploymentName=$DEPLOYMENT
+```
+- すでに同じものがあるので、新しく作られるもの（`+ Create`）は出ず、3つとも `~ Modify` になります。
+- `-` の付いた行は「テンプレートに書いていない、Azure 側が持っている読み取り専用の値」です。適用しても消えるわけではありません（what-if のノイズ）。
+
+### 10. Bicep を適用する
+```powershell
+az deployment group create `
+  --resource-group $RG `
+  --template-file main.bicep `
+  --parameters foundryName=$ACCOUNT projectName=$PROJECT deploymentName=$DEPLOYMENT `
+  --query "properties.outputs.{projectEndpoint:projectEndpoint.value, deployment:deploymentNameOut.value}" -o table
+```
+- 宣言型なので、何度適用しても同じ状態になります（冪等）。リソースは増えません。
+- 出力の `projectEndpoint` が、手順13で `.env` に書く値です（同じテンプレートの `foundryEndpoint` はアカウント単位の別物）。
+
+### 11. 自分に Foundry User ロールを付ける
+CLI や Bicep で作った Foundry リソースには、Foundry User ロールが自動では付きません（L0-3 の手順8と同じ理由）。
+```powershell
+az role assignment create `
+  --role "Foundry User" `
+  --assignee (az ad signed-in-user show --query id -o tsv) `
+  --scope (az cognitiveservices account show --name $ACCOUNT --resource-group $RG --query id -o tsv) `
+  --query "{principalType:principalType, created:createdOn}" -o table
+```
+反映まで数分かかることがあります（手順13で 403 が出たら、少し待ってから再実行）。
+
+### 12. 仮想環境を作って依存を入れる
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+./.venv/bin/Activate.ps1
 pip install -r requirements.txt
-Copy-Item .env.sample .env
-# .env に PROJECT_ENDPOINT と DEPLOYMENT_NAME を設定してから:
+```
+2行目は Codespaces（Linux）の PowerShell 用です。Windows の PowerShell では `.\.venv\Scripts\Activate.ps1` にします。
+
+### 13. `.env` を用意してスモークテストを流す
+```powershell
+cp .env.sample .env
+code .env
+```
+開いた `.env` の `PROJECT_ENDPOINT=` に手順10の `projectEndpoint` を貼って保存します（`DEPLOYMENT_NAME=chat` は最初から入っています）。保存したら実行します。
+```powershell
 python main.py
 ```
+`✅ デプロイは正常に推論できています。` と出れば、作ったデプロイが実際に呼べる状態です。
 
-**CI/CD 雛形（任意）**
-- `github-workflow-sample/evaluate-and-deploy.yml` をリポジトリ直下 `.github/workflows/` にコピーし、OIDC（キーレス）と各リポジトリ変数を設定すると、PR で評価ゲート・main で評価→デプロイが動きます。
-
-## 後片付け（任意）
-Standard（従量）デプロイは、**モデルを置いておくだけでは課金されません**（課金は実際に呼び出したトークン分だけ）。慌てて削除する必要はなく、学習を続けるならそのまま使い回せます。片付けたくなったら、リソースグループごと削除すればまとめて消せます。
+### 14. 後片付け（練習用のリソースグループを消す）
+このレッスンで作ったものは、練習用のリソースグループ `rg-ai103-l13` にまとまっています。**講座共通の `rg-ai103` ではない**ことを確かめてから削除します。
 ```powershell
-az group delete --name ai103-l1-3-rg
+$RG
+az group delete --name $RG --yes --no-wait
 ```
+- 削除した Foundry リソースは、しばらく「論理的に削除された」状態で残ります。同じ名前で作り直す予定がなければ、そのままで構いません。
+
+## CI/CD 雛形（任意・次のレクチャー）
+
+- `github-workflow-sample/evaluate-and-deploy.yml` をリポジトリ直下 `.github/workflows/` にコピーし、OIDC（キーレス）と各リポジトリ変数を設定すると、PR で評価ゲート・main で評価→デプロイが動きます。
 
 ## 注意（揮発情報）
 - **モデル名/バージョン・SKU・API バージョン**は変動します。`list-models` と公式ドキュメントで都度確認。
