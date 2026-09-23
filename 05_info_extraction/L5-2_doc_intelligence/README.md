@@ -102,10 +102,21 @@ markdown を保存しました: output.md（1650 文字・1 ページ）
 
 ### 7. できた markdown を読む
 ```powershell
-Get-Content output.md -TotalCount 30
+Select-String -Path output.md -Pattern '^#', '<table>'
 ```
-- 見出しは `#`、表は **HTML の `<table>`** になっています。これが RAG で「見出しや表の境界で分割する」ときの手がかりになります。
-- エディターで開いて全体を見るなら `code output.md` です。
+```text
+output.md:4:# INVOICE
+output.md:48:<table>
+output.md:68:<table>
+output.md:112:<table>
+```
+- `output.md` から、見出し（行頭の `#`）と表（`<table>`）の行だけを抜き出しています。見出しは `#`、表は **HTML の `<table>`** で、`<table>` が3つ＝手順6の「表を 3 個検出」と対応します。
+- これが RAG で「見出しや表の境界で分割する」ときの手がかりになります。
+
+全体はエディターで開いて読みます。
+```powershell
+code output.md
+```
 
 ### 8. リージョン共通のエンドポイントで、キーレスが失敗することを確かめる
 ```powershell
@@ -113,10 +124,12 @@ $env:DOCUMENTINTELLIGENCE_ENDPOINT = "https://japaneast.api.cognitive.microsoft.
 python analyze_to_markdown.py
 ```
 ```text
-エラー: HttpResponseError: (BadRequest) Please provide a custom subdomain for token authentication, otherwise API key is required.
-...
+エラー: HttpResponseError: (BadRequest) Please provide a custom subdomain for token authentication, otherwise API key is required. (…)
+Code: BadRequest
+Message: Please provide a custom subdomain for token authentication, otherwise API key is required. (…)
+エンドポイントがカスタムサブドメイン付きか、データ操作のロール（Foundry User など）が 付いているか、INPUT_FILE のパスを確認してください。
 ```
-- リージョン共通のエンドポイント（`https://<リージョン>.api.cognitive.microsoft.com/`）では、**Entra ID のトークン認証が使えません**。キーレスで呼ぶには、手順2の**カスタムサブドメイン**のエンドポイントが要ります。
+- リージョン共通のエンドポイント（`https://<リージョン>.api.cognitive.microsoft.com/`）では、**Entra ID のトークン認証が使えません**（401 ではなく 400 BadRequest で、カスタムサブドメインを求められます）。キーレスで呼ぶには、手順2の**カスタムサブドメイン**のエンドポイントが要ります。
 - シェルの環境変数（`$env:...`）は `.env` より優先されます（`load_dotenv()` は、すでにある環境変数を上書きしない）。
 
 確かめたら、環境変数を消して `.env` の値に戻します。
