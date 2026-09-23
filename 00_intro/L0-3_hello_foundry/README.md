@@ -2,7 +2,7 @@
 
 Microsoft Foundry プロジェクトに**キーレス**（`DefaultAzureCredential`）で接続し、Responses API でチャットモデルを1回呼んで応答を表示する、最小のサンプルです。
 
-> 対応レクチャー：実践 `L0-3-2` ／ 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）。APIキーは使いません。
+> 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）です。APIキーは使いません。
 
 ## ファイル構成
 | ファイル | 役割 |
@@ -10,6 +10,7 @@ Microsoft Foundry プロジェクトに**キーレス**（`DefaultAzureCredentia
 | `main.py` | Foundry プロジェクトへキーレス接続し、Responses API を1回呼ぶ最小サンプル |
 | `.env.sample` | 環境変数の雛形 |
 | `requirements.txt` | Python 依存パッケージ |
+| `README.md` | このファイル（手順とコマンド） |
 
 ## 前提
 - Azure サブスクリプション（従量課金）／`az login` 済み
@@ -17,98 +18,124 @@ Microsoft Foundry プロジェクトに**キーレス**（`DefaultAzureCredentia
 
 ## 進め方（コピペで実行できます）
 
+全部で10手順です。各手順のコードブロックを、そのままターミナルに貼り付けて実行します。
+
+| 手順 | やること |
+|---|---|
+| 1 | サインイン先を確かめる |
+| 2 | クォータティアを確認する |
+| 3 | リソースグループを作る |
+| 4 | Foundry リソースを作る |
+| 5 | プロジェクトを作る |
+| 6 | チャットモデルをデプロイする |
+| 7 | プロジェクトのエンドポイントを取得する |
+| 8 | 仮想環境を作って依存を入れる |
+| 9 | `.env` を用意する |
+| 10 | 実行する |
+
+> コマンドは **PowerShell**（Codespaces のターミナルで `pwsh` を選ぶ／Windows の PowerShell）向けです。行末の `` ` `` は行の継続です。bash / zsh で使う場合は `` ` `` を `\` に置き換えてください。
+>
+> 最初に、リポジトリのルートからこのフォルダーへ移動しておきます。
+> ```powershell
+> cd 00_intro/L0-3_hello_foundry
+> ```
+
 ### 1. サインイン先を確かめる
-```bash
+```powershell
 az account show --query "{subscription:name, state:state}" -o table
 ```
 
 ### 2. クォータティアを確認する（ポータルには出ないので API で見る）
-```bash
-az rest --method get \
-  --url "https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/providers/Microsoft.CognitiveServices/quotaTiers?api-version=2026-09-01"
+```powershell
+az rest --method get `
+  --url "https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/providers/Microsoft.CognitiveServices/quotaTiers?api-version=2026-05-01" `
+  --query "value[].properties" -o table
 ```
-`properties.currentTierName` が返ります。**最下位ティア（Free Tier / Tier 0）**だった場合、既定クォータが付くのは `gpt-4.1-mini` / `gpt-5-mini` / `o4-mini` / `text-embedding-3-small` の4モデルだけです。その場合は以下の `gpt-5.4-nano` を `gpt-4.1-mini` に読み替えてください（`.env` の `MODEL_DEPLOYMENT` も同じ名前にします。手順・学習目的は変わりません）。
+`CurrentTierName` に今のティアが出ます。**最下位ティア（Free Tier / Tier 0）**だった場合、既定クォータが付くのは `gpt-4.1-mini` / `gpt-5-mini` / `o4-mini` / `text-embedding-3-small` の4モデルだけです。その場合は以下の `gpt-5.4-nano` を `gpt-4.1-mini` に読み替えてください（`.env` の `MODEL_DEPLOYMENT` も同じ名前にします。手順・学習目的は変わりません）。
 
-> ⚠️ `api-version=2023-05-01` は404になります。上記の `2026-09-01` が通ります（api-version は更新が速いので、失敗したら現行の値を確認してください）。
+> ⚠️ `quotaTiers` の api-version は更新が速く、通る値が入れ替わります（2026-09-23 実測：`2026-05-01` は通り、`2023-05-01` や `2026-09-01` は `InvalidResourceType` の404）。404 のエラーメッセージに「サポートされる api-version の一覧」が出るので、その中の値に差し替えてください。
 
 ### 3. リソースグループを作る
-```bash
-az group create --name rg-ai103-hello --location japaneast
+```powershell
+az group create --name rg-ai103-hello --location japaneast `
+  --query "{name:name, state:properties.provisioningState}" -o table
 ```
 
 ### 4. Foundry リソースを作る
-```bash
-az cognitiveservices account create \
-    --name ai103-hello-foundry \
-    --resource-group rg-ai103-hello \
-    --kind AIServices \
-    --sku S0 \
-    --location japaneast \
-    --custom-domain ai103-hello-foundry \
-    --assign-identity \
-    --allow-project-management true
+```powershell
+az cognitiveservices account create `
+  --name ai103-hello-foundry `
+  --resource-group rg-ai103-hello `
+  --kind AIServices `
+  --sku S0 `
+  --location japaneast `
+  --custom-domain ai103-hello-foundry `
+  --assign-identity `
+  --allow-project-management true `
+  --query "{name:name, kind:kind, state:properties.provisioningState}" -o table
 ```
-- `--custom-domain` はグローバルに一意です（使用済みなら `CustomDomainInUse`）。
+- `--custom-domain` はグローバルに一意です（使用済みなら `CustomDomainInUse`。名前を変えて、以降の手順の `ai103-hello-foundry` もすべて読み替えてください）。
 - `--assign-identity` が無いと、次のプロジェクト作成が `managed identity must be enabled` で失敗します。
 - ⚠️ **既存アカウントに対してこのコマンドを再実行すると** `(BadRequest) PublicNetworkAccess is required for this resouce`（Azure側のスペルミスもそのまま）で失敗します。`--public-network-access Enabled` という引数は存在しません（`unrecognized arguments`）。**既にリソースがある場合は `create` を再実行せず**、`az cognitiveservices account show --name ai103-hello-foundry --resource-group rg-ai103-hello` で状態を確認するだけにしてください。
 
 ### 5. プロジェクトを作る
-```bash
-az cognitiveservices account project create \
-    --name ai103-hello-foundry \
-    --resource-group rg-ai103-hello \
-    --project-name hello-foundry-project \
-    --location japaneast
+```powershell
+az cognitiveservices account project create `
+  --name ai103-hello-foundry `
+  --resource-group rg-ai103-hello `
+  --project-name hello-foundry-project `
+  --location japaneast `
+  --query "{name:name, state:properties.provisioningState}" -o table
 ```
 > ⚠️ 親のリソースを指す引数は `--account-name` ではなく **`--name`/`-n`** です（`--account-name` はこのサブコマンドでは通らず `the following arguments are required: --name/-n` になります）。`project create` は `--project-name` も必須です。
 
 ### 6. チャットモデルをデプロイする
-```bash
-az cognitiveservices account deployment create \
-    --name ai103-hello-foundry \
-    --resource-group rg-ai103-hello \
-    --deployment-name gpt-5.4-nano \
-    --model-name gpt-5.4-nano \
-    --model-version "2026-03-17" \
-    --model-format OpenAI \
-    --sku-capacity 10 \
-    --sku-name GlobalStandard
-
-# 確認（provisioningState が Succeeded になればOK）
-az cognitiveservices account deployment show \
-    --name ai103-hello-foundry \
-    --resource-group rg-ai103-hello \
-    --deployment-name gpt-5.4-nano
+```powershell
+az cognitiveservices account deployment create `
+  --name ai103-hello-foundry `
+  --resource-group rg-ai103-hello `
+  --deployment-name gpt-5.4-nano `
+  --model-name gpt-5.4-nano `
+  --model-version "2026-03-17" `
+  --model-format OpenAI `
+  --sku-capacity 10 `
+  --sku-name GlobalStandard `
+  --query "{name:name, state:properties.provisioningState}" -o table
 ```
+`State` が `Succeeded` になればOKです。あとから状態だけ確かめたいときは `deployment create` を `deployment show` に変え、`--model-*` と `--sku-*` の行を外して実行します。
 > ⚠️ `--model-version` と対応 SKU は更新されます。収録時点の値が古い場合は、ポータルのモデルカードか `az cognitiveservices model list --location japaneast --query "[?model.name=='gpt-5.4-nano'].{version:model.version,skus:join(',',model.skus[].name)}" -o table` で現行の値を確認して指定してください。
 
 ### 7. プロジェクトのエンドポイントを取得する
-```bash
-az cognitiveservices account project show \
-    --name ai103-hello-foundry \
-    --resource-group rg-ai103-hello \
-    --project-name hello-foundry-project \
-    --query 'properties.endpoints."AI Foundry API"' -o tsv
+```powershell
+az cognitiveservices account project show `
+  --name ai103-hello-foundry `
+  --resource-group rg-ai103-hello `
+  --project-name hello-foundry-project `
+  --query 'properties.endpoints."AI Foundry API"' -o tsv
 ```
+- 返ってきた URL（末尾が `/api/projects/hello-foundry-project`）を、手順9で `.env` に貼ります。
 - ⚠️ **Build > Models のデプロイ詳細に出るエンドポイントとは別物**です。そちらを貼ると `main.py` は404になります。ポータルなら、プロジェクトの**ホーム（welcome）画面**に出る「プロジェクト エンドポイント」を使ってください。
 
-### 8. ローカル環境をセットアップする
-```bash
-cd udemy-ai-103-handson/00_intro/L0-3_hello_foundry
+### 8. 仮想環境を作って依存を入れる
+```powershell
 python -m venv .venv
-. .venv/Scripts/activate          # macOS/Linux は: source .venv/bin/activate
+./.venv/bin/Activate.ps1
 pip install -r requirements.txt
 ```
+- 2行目は Codespaces（Linux）の PowerShell 用です。Windows の PowerShell は `.\.venv\Scripts\Activate.ps1`、bash / zsh は `source .venv/bin/activate` にします。
+- プロンプトの先頭に `(.venv)` が付けば有効化できています。
+
 > ⚠️ `azure-ai-projects` は **2.x（新／Foundry プロジェクト）**を使います。1.x（classic／Hub）とは互換性がありません。`pip show azure-ai-projects` で2.0以上を確認してください。
 
 ### 9. `.env` を用意する
-```bash
-cp .env.sample .env               # Windows: copy .env.sample .env
+```powershell
+cp .env.sample .env
+code .env
 ```
-`.env` を開き、手順7で取得したエンドポイントを `PROJECT_ENDPOINT` に、手順6のデプロイ名を `MODEL_DEPLOYMENT` に設定します（`.env` は `.gitignore` 対象。コードに直書き・コミットしないでください）。
+開いた `.env` の `PROJECT_ENDPOINT=` に手順7のエンドポイントを貼り、`MODEL_DEPLOYMENT` を手順6のデプロイ名（`gpt-5.4-nano`）にして保存します（`.env` は `.gitignore` 対象です。コードに直書き・コミットしないでください）。
 
 ### 10. 実行する
-```bash
+```powershell
 python main.py
 ```
 

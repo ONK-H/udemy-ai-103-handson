@@ -53,9 +53,9 @@ Foundry はサブスクリプションごとに **クォータティア**（最�
 
 ```powershell
 az rest --method get `
-  --url "https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/providers/Microsoft.CognitiveServices/quotaTiers?api-version=2026-09-01"
+  --url "https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/providers/Microsoft.CognitiveServices/quotaTiers?api-version=2026-05-01"
 ```
-> ⚠️ `api-version` は更新が速いです。`2023-05-01` は404になります（2026-09-22実測）。上記が通らなければ現行の値を確認してください。
+> ⚠️ `api-version` は更新が速く、通る値が入れ替わります（2026-09-23実測：`2026-05-01` は通り、`2023-05-01` や `2026-09-01` は404）。404 のエラーメッセージに「サポートされる api-version の一覧」が出るので、その中の値に差し替えてください。
 
 **最下位ティアで既定クォータが付与されるのは次の4モデルだけ**です（すべて GlobalStandard）。
 
@@ -110,4 +110,4 @@ MODEL_SMALL=gpt-4.1-mini    # 非推論モデル。速く・安い＝「小さ�
 ## 注意（揮発情報）
 - **モデルID・世代は更新が速い**。デプロイ前に Foundry のカタログで現行IDを確認してください。
 - **ティア別 TPM 表はモデル追加のたびに変わります**（新しいモデルは上位ティアのみ、というケースあり）。→ https://learn.microsoft.com/azure/foundry/openai/quotas-limits#quota-tiers
-- `quotaTiers` API のバージョンは更新が速い（2026-09-22時点で通るのは `2026-09-01`）。
+- `quotaTiers` API のバージョンは更新が速い（2026-09-23時点で通るのは `2026-05-01`。404 のエラーメッセージにサポートされる一覧が出る）。
