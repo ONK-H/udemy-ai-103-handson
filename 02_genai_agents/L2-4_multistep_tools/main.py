@@ -6,6 +6,7 @@ Responses API の function calling ループを手で回し、複数の自作ツ
 """
 
 import os
+import sys
 import json
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
@@ -13,7 +14,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 PROJECT_ENDPOINT = os.getenv("PROJECT_ENDPOINT")
-MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-5-mini")
+MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-5.4")
+# 質問はコマンドライン引数で差し替えられる（無ければ既定の質問）
+QUESTION = sys.argv[1] if len(sys.argv) > 1 else "ノートPCの在庫の合計金額を計算して、結果を日本語でまとめて。"
 
 # --- 自作ツールの実装（モック）。実行するのはアプリ（モデルではない） ---
 _INVENTORY = {
@@ -78,11 +81,12 @@ def main() -> None:
     project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCredential())
     openai = project.get_openai_client()
 
-    messages = [{"role": "user", "content": "ノートPCの在庫の合計金額を計算して、結果を日本語でまとめて。"}]
+    messages = [{"role": "user", "content": QUESTION}]
 
-    for _step in range(6):  # 無限ループ防止の上限
+    for step in range(6):  # 無限ループ防止の上限
         res = openai.responses.create(model=MODEL_DEPLOYMENT, input=messages, tools=tools)
         calls = [o for o in res.output if getattr(o, "type", None) == "function_call"]
+        print(f"[応答{step + 1}] function_call {len(calls)} 件")
         if not calls:
             print("\n=== 最終回答 ===")
             print(res.output_text)
@@ -91,9 +95,9 @@ def main() -> None:
         messages += res.output
         for call in calls:
             name = call.name
-            args = json.loads(call.arguments)
-            print(f"[ツール呼び出し] {name}({args})")
+            print(f"[ツール呼び出し] {name}({call.arguments})")
             try:
+                args = json.loads(call.arguments)  # モデルが作る文字列なので、壊れていることもある
                 result = TOOL_IMPL[name](**args)
             except Exception as ex:  # 信頼性：エラーをモデルに返す
                 result = {"error": str(ex)}
