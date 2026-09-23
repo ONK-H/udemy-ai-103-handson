@@ -4,6 +4,7 @@
 """
 
 import os
+import sys
 from azure.identity import DefaultAzureCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import DocumentContentFormat, AnalyzeResult
@@ -31,7 +32,7 @@ def main() -> None:
     # 1) markdown を保存（RAG のセマンティックチャンクに使える形）
     with open(OUTPUT_MD, "w", encoding="utf-8") as out:
         out.write(result.content)
-    print(f"markdown を保存しました: {OUTPUT_MD}（{len(result.content)} 文字）")
+    print(f"markdown を保存しました: {OUTPUT_MD}（{len(result.content)} 文字・{len(result.pages)} ページ）")
 
     # 2) 構造の確認：抽出された表の数と形
     if result.tables:
@@ -53,6 +54,6 @@ if __name__ == "__main__":
         main()
     except Exception as e:  # 教育目的のエラーハンドリング
         print(f"エラー: {type(e).__name__}: {e}")
-        print("エンドポイントがカスタムサブドメイン付きか、Cognitive Services User ロールが "
-              "付与されているか、INPUT_FILE のパスを確認してください。")
-        raise
+        print("エンドポイントがカスタムサブドメイン付きか、データ操作のロール（Foundry User など）が "
+              "付いているか、INPUT_FILE のパスを確認してください。")
+        sys.exit(1)  # 失敗を終了コードで呼び出し元に伝える（握りつぶさない）
