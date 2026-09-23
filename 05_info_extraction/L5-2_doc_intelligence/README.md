@@ -154,4 +154,4 @@ Remove-Item -Recurse sample
 - **401 / 403**：データ操作のロールが付いているか確かめる。ロールは付けてから反映まで数分かかることがある。
 - **`FileNotFoundError`**：手順3の `sample/invoice.pdf` があるか、`.env` の `INPUT_FILE` のパスが合っているか確かめる。
 - **`ImportError: DocumentContentFormat`**：SDK が古い（ベータ版は `ContentFormat`）。`azure-ai-documentintelligence>=1.0.0` を入れ直す。旧 `azure-ai-formrecognizer` とは別のパッケージです。
-- **ページが欠ける**：無料枠（F0）は PDF の先頭2ページ・4MB までしか処理しません。出力の「N ページ」と元の PDF のページ数を突き合わせる。
+- **ページが欠ける**：Document Intelligence 単体のリソースを無料枠（F0）で作った場合、PDF は先頭2ページしか処理されません（ファイルも4MBまで）。出力の「N ページ」と元の PDF のページ数を突き合わせる。
