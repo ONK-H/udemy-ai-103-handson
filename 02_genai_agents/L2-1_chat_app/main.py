@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PROJECT_ENDPOINT = os.getenv("PROJECT_ENDPOINT")
-MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-5-mini")
+MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-5.4")
 
 # システムメッセージ（役割・口調を固定。毎ターン先頭に効かせる）
 SYSTEM_PROMPT = "あなたは親切で簡潔な日本語のアシスタントです。専門用語は噛み砕いて説明してください。"
@@ -63,6 +63,9 @@ def main() -> None:
                 if event.type == "response.output_text.delta":
                     print(event.delta, end="", flush=True)  # 届いた断片を即表示
                     answer += event.delta
+                elif event.type in ("response.failed", "error"):
+                    # ストリームの途中で失敗した場合は、例外ではなくイベントとして届く
+                    raise RuntimeError(f"ストリーミング中にエラー: {event}")
                 elif event.type == "response.completed":
                     break
             print()  # 改行
