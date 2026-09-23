@@ -144,7 +144,7 @@ az deployment group what-if `
   --parameters foundryName=$ACCOUNT projectName=$PROJECT deploymentName=$DEPLOYMENT
 ```
 - すでに同じものがあるので、新しく作られるもの（`+ Create`）は出ず、3つとも `~ Modify` になります。
-- `-` の付いた行は「テンプレートに書いていない、Azure 側が持っている読み取り専用の値」です。適用しても消えるわけではありません（what-if のノイズ）。
+- `-` の付いた行は、テンプレートに書いていない、Azure 側で付いた値です。what-if は冒頭の Note のとおりノイズ（誤検知）を含むので、`-` を見たら「本当に消してよい値か」を読んでから適用を判断します。
 
 ### 10. Bicep を適用する
 ```powershell
@@ -193,7 +193,14 @@ python main.py
 $RG
 az group delete --name $RG --yes --no-wait
 ```
-- 削除した Foundry リソースは、しばらく「論理的に削除された」状態で残ります。同じ名前で作り直す予定がなければ、そのままで構いません。
+削除した Foundry リソースは「論理的に削除された」状態で残り、スクリプトで消した場合は、**デプロイのクォータを最大48時間つかんだまま**になります。削除が終わったら（数分）、完全に消して（purge）クォータを空けます。
+```powershell
+az cognitiveservices account list-deleted --query "[?name=='$ACCOUNT'].{name:name, location:location}" -o table
+az cognitiveservices account purge --name $ACCOUNT --resource-group $RG --location $LOCATION
+```
+- 1行目で、削除済みの一覧に自分の練習用リソースがあることを確かめます（まだ出ないときは、少し待ってから再実行）。
+- purge には、**サブスクリプション単位**の Contributor（または Cognitive Services Contributor）が必要です。権限が無い場合は purge せず、48時間たてば自動で空きます。
+- purge したリソースは元に戻せません。
 
 ## CI/CD 雛形（任意・次のレクチャー）
 
