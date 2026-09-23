@@ -16,7 +16,7 @@ load_dotenv()
 PROJECT_ENDPOINT = os.getenv("PROJECT_ENDPOINT")
 MODEL_DEPLOYMENT = os.getenv("MODEL_DEPLOYMENT", "gpt-5.4")
 # 質問はコマンドライン引数で差し替えられる（無ければ既定の質問）
-QUESTION = sys.argv[1] if len(sys.argv) > 1 else "ノートPCの在庫の合計金額を計算して、結果を日本語でまとめて。"
+QUESTION = sys.argv[1] if len(sys.argv) > 1 else "ノートPCの在庫の合計金額を計算して、結果を日本語で2行にまとめて。"
 
 # --- 自作ツールの実装（モック）。実行するのはアプリ（モデルではない） ---
 _INVENTORY = {
