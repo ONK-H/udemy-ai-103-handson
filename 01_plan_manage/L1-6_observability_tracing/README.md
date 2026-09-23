@@ -18,7 +18,7 @@
 - モデルは **`gpt-5.4`**（L1-1 で講座共通のプロジェクトにデプロイ済み）。
 - `az login` 済み ／ Python 3.11+
 - ロール：`rg-ai103` にリソースを作れること（Contributor 以上）。トレースを読むには、Application Insights に **Log Analytics Reader** 以上が要ります（リソースグループの Owner／Contributor なら含まれます）。
-- 費用：Application Insights（Log Analytics）は**取り込んだデータ量と保持期間**で課金されます。このハンズオンで送るのは数十 KB 程度です。
+- 費用：Application Insights（Log Analytics）は、主に**取り込んだデータ量**で課金されます（Application Insights のデータは、既定の保持期間の範囲なら保持の料金はかかりません）。このハンズオンで送るのは数十 KB 程度です。
 
 ## 進め方（コピペで実行できます）
 
@@ -137,14 +137,14 @@ python trace_app.py
 2つの質問を投げて、答えとトークン数、最後に `operation_Id` を表示します。
 ```text
 Q: Microsoft Foundry の可観測性とは何ですか？1文で答えてください。
-[分類] general  [トークン] 入力 50 / 出力 60
+[分類] general  [トークン] 入力 50 / 出力 69
 A: …
 
 Q: デプロイしたモデルが動かないエラーの切り分け手順を3つ、それぞれ20文字以内で挙げてください。
-[分類] support  [トークン] 入力 64 / 出力 90
+[分類] support  [トークン] 入力 66 / 出力 30
 A: …
 
---- トレース送信完了。operation_Id: 20315388eb2df44f40cfef68ea696909 ---
+--- トレース送信完了。operation_Id: d00a160a4b795ca8e39cab0f42d0e3dc ---
 Application Insights への反映には数分かかります。
 ```
 - `[分類]` は自作関数 `classify_question` が決めた値で、モデルが決めたものではありません（「エラー」「動かない」を含めば support）。
@@ -160,13 +160,13 @@ az monitor app-insights query --resource-group $RG --app ai103-appinsights `
   --query "tables[0].rows" -o tsv
 ```
 ```text
-l1-6-trace-demo	9990
+l1-6-trace-demo	7686
 classify-question	0			general
-chat gpt-5.4	4361	41	83
+chat gpt-5.4	4030	50	69
 classify-question	0			support
-chat gpt-5.4	5628	53	406
+chat gpt-5.4	3655	66	30
 ```
-- 1列目が span の名前、2列目が所要時間（ミリ秒）です。`l1-6-trace-demo` が親 span で、その中に自作の `classify-question` と、自動で計測された推論の span（`chat <デプロイ名>`）が並びます。
+- 1列目が span の名前、2列目が所要時間（ミリ秒）です。親の所要時間は、2つの推論の合計とほぼ同じです（推論が順番に2回走った）。`l1-6-trace-demo` が親 span で、その中に自作の `classify-question` と、自動で計測された推論の span（`chat <デプロイ名>`）が並びます。
 - 推論の span には、入力・出力のトークン数（`gen_ai.usage.input_tokens`／`output_tokens`）が入っています。
 - `classify-question` の行の `general`／`support` は、コードが `app.question_category` という名前で足した属性です。
 - 何も表示されないときは、もう数分待って再実行します。
@@ -174,7 +174,7 @@ chat gpt-5.4	5628	53	406
 
 ### 11. 後片付け
 - Application Insights とワークスペース、プロジェクトへの接続は、**後のレッスン（エージェントのトレース）でも使うので残します**。
-- 課金は、取り込んだデータ量と保持期間に応じてかかります。講座を終えて不要になったら、次のコマンドで接続とリソースを消します。
+- 課金は、主に取り込んだデータ量にかかります（既定の保持期間の範囲なら保持の料金はかかりません）。講座を終えて不要になったら、次のコマンドで接続とリソースを消します。
   ```powershell
   az rest --method delete --url "https://management.azure.com$PROJECT_ID/connections/ai103-appinsights?api-version=2025-06-01"
   az monitor app-insights component delete --resource-group $RG --app ai103-appinsights
