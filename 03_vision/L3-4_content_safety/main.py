@@ -15,7 +15,7 @@ import os
 
 from azure.ai.contentsafety import ContentSafetyClient
 from azure.ai.contentsafety.models import AnalyzeImageOptions, ImageData
-from azure.core.exceptions import HttpResponseError
+from azure.core.exceptions import HttpResponseError, ServiceRequestError
 from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 
@@ -76,3 +76,6 @@ if __name__ == "__main__":
         print(f"Content Safety エラー: {ex.status_code} {code}: {msg}")
     except FileNotFoundError:
         print(f"画像が見つかりません: {args.image}")
+    except ServiceRequestError as ex:
+        # .env の値が空・https でない、ネットワークに届かない などはここに来る
+        print(f"接続できません（.env の CONTENT_SAFETY_ENDPOINT を確認）: {ex}")

@@ -95,7 +95,7 @@ python main.py
 判定: Accepted(受理)
 ```
 - Content Safety が返すのは、**4つのカテゴリそれぞれの重大度（severity）だけ**です。画像の分析では 0・2・4・6 の4段階で返ります（0=Safe、2=Low、4=Medium、6=High）。
-- 右側の「しきい値」と「OK／NG」、最後の「判定」は、**`main.py` が作っています**（`THRESHOLDS` と比べて、どれか1つでもしきい値以上なら拒否）。
+- 右側の「しきい値」と「OK／NG」、最後の「判定」は、**`main.py` が作っています**（`THRESHOLDS` と比べて、どれか1つでもしきい値以上なら拒否。「以上で拒否」はこのアプリの設計です）。
 - カテゴリは同時に複数付くことがあります（マルチラベル）。そのため、どれか1つの結果だけでなく4つすべてを見ます。
 
 ### 7. しきい値を 0 にして、判定がアプリ側で決まることを確かめる
@@ -128,11 +128,12 @@ Content Safety エラー: 400 InvalidRequestBody: The width of given image is 40
 - Content Safety は**重大度を返すだけ**です。受理／拒否の最終判断は、**アプリ側がしきい値で決めます**（`THRESHOLDS`）。カテゴリごとに違うしきい値にできます（例：性的・暴力は厳しめの 2、ヘイト・自傷は中程度の 4）。
 - 画像の分析が返す重大度は **0・2・4・6 の4段階**です（テキストの分析は、指定すれば 0〜7 の8段階でも返せます）。
 - 呼び出しは `ContentSafetyClient(エンドポイント, 資格情報)` → `analyze_image(AnalyzeImageOptions(image=ImageData(content=バイト列)))`。画像はバイト列（SDK が base64 にして送る）か、Blob Storage の URL で渡します。
-- キーレスで呼ぶには、呼び出す ID にデータ操作のロールが要ります。公式の Content Safety の案内は **Cognitive Services User**（＋ Reader）です。この講座では、L0-3 で付けた **Foundry User** で呼べることを確かめています。
+- キーレスで呼ぶには、呼び出す ID にデータ操作のロールが要ります。**Foundry リソースなら Foundry User**（Learn の Foundry の RBAC。この講座では L0-3 で付けた Foundry User で呼べることを確かめています）、**専用の Content Safety リソースなら Cognitive Services User**（＋ Reader）です。
 
 ## つまずき
 - **認証エラー（401 / 403）**：`az login` しているか、Foundry User（または Cognitive Services User）ロールが付いているかを確かめる。ロールは付けてから反映まで数分かかることがある。
 - **`KeyError: 'CONTENT_SAFETY_ENDPOINT'`**：`.env` が無いか、キーの名前が違う。手順4をやり直す。
+- **`接続できません（.env の CONTENT_SAFETY_ENDPOINT を確認）: ... non-https ...`**：`.env` をコピーしたあと、値を貼り忘れている（空のまま）。`KeyError` ではなく、https ではないという `ServiceRequestError` になる。手順2のエンドポイントを貼って保存する。
 - **400 `InvalidRequestBody`**：画像が入力の制限（4 MB・50×50〜7200×7200・対応形式）に合っていない。
 - **401 `Unauthorized`（audience is incorrect）**：`.env` にプロジェクトのエンドポイント（`.../api/projects/...`）を貼っている。Content Safety は手順2のリソースのエンドポイント（`...cognitiveservices.azure.com/`）で呼ぶ。
 - **画像が見つかりません**：`main.py` と同じフォルダーで実行しているか確かめる。
