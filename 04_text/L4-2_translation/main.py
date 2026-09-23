@@ -4,9 +4,12 @@ Azure Translator テキスト翻訳API（GA 2026-06-06）で
  ① NMT で多言語翻訳（deploymentName 省略＝general）
  ② LLM でトーン制御（formal vs informal）
 を実行する。キーレス認証（Entra ID）を第一選択、キーはフォールバック。
+  python main.py            ① と ② を実行
+  python main.py nmt-tone   NMT（deploymentName なし）に tone を付けても訳文が変わらないことを確かめる
 """
 
 import os
+import sys
 import requests
 from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
@@ -45,8 +48,19 @@ def translate(text: str, targets: list) -> dict:
     return resp.json()
 
 
+def nmt_tone_check(text: str):
+    """NMT の要素に tone を付けても、エラーにならず黙って無視されることを確かめる。"""
+    print("=== NMT に tone を付けた場合 ===")
+    for tone in ("formal", "informal"):
+        result = translate(text, [{"language": "en", "tone": tone}])
+        print(f"  [{tone}] {result['value'][0]['translations'][0]['text']}")
+
+
 def main():
     text = "ご来店ありがとうございます。本日のおすすめをご案内します。"
+    if sys.argv[1:] == ["nmt-tone"]:
+        nmt_tone_check(text)
+        return
 
     # ① NMT で多言語翻訳（deploymentName 省略＝general＝NMT）
     print("=== ① NMT 多言語翻訳 ===")
@@ -59,7 +73,7 @@ def main():
     if not LLM_DEPLOYMENT:
         print("\n[skip] LLM_DEPLOYMENT 未設定のため、トーン比較はスキップします。")
         return
-    print("\n=== ② LLM トーン制御（英語：formal vs informal）===")
+    print(f"\n=== ② LLM トーン制御（英語：formal vs informal／デプロイ: {LLM_DEPLOYMENT}）===")
     result = translate(text, [
         {"language": "en", "deploymentName": LLM_DEPLOYMENT, "tone": "formal"},
         {"language": "en", "deploymentName": LLM_DEPLOYMENT, "tone": "informal"},
