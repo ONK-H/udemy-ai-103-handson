@@ -80,7 +80,7 @@ pip install -r requirements.txt
 cp .env.sample .env
 code .env
 ```
-開いた `.env` の `TRANSLATOR_ENDPOINT=` に手順3の URL を貼って保存します。`TRANSLATOR_KEY=` は**空のまま**にします（空ならキーレスで呼びます）。`LLM_DEPLOYMENT=gpt-5.4` は最初から入っています。
+開いた `.env` の `TRANSLATOR_ENDPOINT=` に手順3の URL を貼って保存します。`TRANSLATOR_KEY=` は**空のまま**にします（空ならキーレスで呼びます。**キーが入っていると、キー認証が先に使われます**。キーレスに移したつもりでキーが残っていると、黙ってキーで呼び続けるので注意）。`LLM_DEPLOYMENT=gpt-5.4` は最初から入っています。
 
 ### 6. NMT と LLM（トーン制御）で翻訳する
 ```powershell
@@ -99,7 +99,7 @@ python main.py
 ```
 - ① は `targets` に `deploymentName` を書かない（＝NMT）。1回の呼び出しで3言語に訳せます。
 - ② は `targets` に `deploymentName`（手順2のデプロイ名）と `tone` を書く（＝LLM 翻訳）。**同じ API・同じ URL で、`targets` の書き方だけで NMT と LLM が切り替わります**。
-- LLM の訳文は、実行するたびに少し変わることがあります。見るのは「formal と informal で、丁寧さや言い回しが違う」ことです。
+- LLM の訳文は、実行するたびに少し変わることがあります（上の例と一字一句同じでなくてかまいません）。見るのは「formal と informal で、丁寧さや言い回しが違う」ことです。
 
 ### 7. NMT に tone を付けたらどうなるか確かめる
 ```powershell
