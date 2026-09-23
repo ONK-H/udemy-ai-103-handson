@@ -49,7 +49,8 @@ def call_with_manual_backoff(
     delay = initial_delay
     while True:
         try:
-            res = client.responses.create(model=MODEL, input=PROMPT)
+            # 自前で待つので SDK 側のリトライは 0 にする（二重に効くと待ち時間が掛け算になる）
+            res = client.with_options(max_retries=0).responses.create(model=MODEL, input=PROMPT)
             return res.output_text
         except openai.RateLimitError as ex:
             num_retries += 1
