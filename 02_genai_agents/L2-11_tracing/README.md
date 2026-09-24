@@ -120,10 +120,11 @@ USER> 商品 ZZ9 の在庫は？
 [応答1] function_call 1 件
 [実行] get_inventory({'product_code': 'ZZ9'}) -> {'error': 'unknown product_code: ZZ9'}
 [応答2] function_call 0 件
-AI> 申し訳ありませんが、商品コードZZ9の在庫情報は見つかりませんでした。…
+AI> 申し訳ありませんが、商品コードZZ9は存在しないようです。…
 会話とエージェントを削除しました（残り: 0 件）
-operation_Id: 54b9661c9f803187fe1111920aae3c14（Application Insights への反映には数分かかります）
+operation_Id: 59e2c0e348d5ceb99b5c8e7a7795a1b4（Application Insights への反映には数分かかります）
 ```
+- `[応答1] function_call 1 件` は、モデルが関数の呼び出しを**依頼**した件数です。関数を実行したのはアプリ（`run_tool`）で、その結果が `[実行]` の行です。
 - プログラムは**例外にならず、最後まで正常に終わります**。ツールは error を「戻り値」として返し、モデルはそれを読んで「見つかりませんでした」と答えています。これが、ログを眺めるだけでは気づきにくい**静かな失敗**です。
 - 最後の `operation_Id` は、この実行の親 span のトレース ID です。手順8・9で使います。答えの文面は実行のたびに変わります。
 - 成功する例と見比べたいときは `python main.py "商品 X1 の在庫は？"` を実行します。
@@ -137,17 +138,17 @@ az monitor app-insights query --resource-group $RG --app ai103-appinsights `
   --query "tables[0].rows" -o tsv
 ```
 ```text
-l2-11-inventory-scenario	8159	True	inventory-app
-create_agent traced-agent	2409	True	inventory-app
-POST /api/projects/ai103-project/agents/traced-agent/versions	2405	True	inventory-app
-create_conversation	1594	True	inventory-app
-invoke_agent traced-agent	2314	True	inventory-app
-invoke_agent traced-agent:1	1032	True	responsesapi
-chat gpt-4.1-mini-2025-04-14	949	True	responsesapi
+l2-11-inventory-scenario	9115	True	inventory-app
+create_agent traced-agent	2791	True	inventory-app
+POST /api/projects/ai103-project/agents/traced-agent/versions	2787	True	inventory-app
+create_conversation	881	True	inventory-app
+invoke_agent traced-agent	2525	True	inventory-app
+invoke_agent traced-agent:1	1020	True	responsesapi
+chat gpt-4.1-mini-2025-04-14	937	True	responsesapi
 get_inventory	0	True	inventory-app
-invoke_agent traced-agent	1837	True	inventory-app
-invoke_agent traced-agent:1	1343	True	responsesapi
-chat gpt-4.1-mini-2025-04-14	1168	True	responsesapi
+invoke_agent traced-agent	2916	True	inventory-app
+invoke_agent traced-agent:1	1247	True	responsesapi
+chat gpt-4.1-mini-2025-04-14	1142	True	responsesapi
 ```
 - 1列目が span の名前、2列目が所要時間（ミリ秒）、3列目が成功かどうか、4列目がその span を記録した側です。
 - `inventory-app` は**このアプリ（client-side）**、`responsesapi` は **Foundry のサービス側**（server-side）の span です。アプリが `get_openai_client()` で取ったクライアントはトレースの文脈を送るので、両方が同じ `operation_Id` の1本のトレースにつながります。
@@ -162,11 +163,11 @@ az monitor app-insights query --resource-group $RG --app ai103-appinsights `
 ```
 ```text
 tool_calls	get_inventory	{"product_code":"ZZ9"}	102	17
-stop			138	38
+stop			138	28
 ```
 - 1行目は1回目の推論です。モデルは答えを出さずに終わり（`tool_calls`）、`get_inventory` を引数 `{"product_code":"ZZ9"}` で呼ぶよう依頼しています。**モデルは質問の商品コードをそのまま渡しており、引数の取り違えではない**ことが分かります。
 - 2行目は、ツールの結果を受け取ったあとの推論で、`stop`（答えを出して終了）です。
-- 右の2列は入力・出力のトークン数です。サービス側の span には、トークン数と一緒に、プロンプトと応答の本文（`gen_ai.input.messages`／`gen_ai.output.messages`）も入っています。本文は個人情報を含みうるので、トレースを読める人を絞ります。アプリ側の span に本文を記録するかどうかは `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` で切り替えます（このコードは開発用に `true`）。
+- 右の2列は入力・出力のトークン数です（本文ではなく `gen_ai.usage.*` の属性から取っています。トークン数は実行のたびに変わります）。サービス側の span には、トークン数と一緒に、プロンプトと応答の本文（`gen_ai.input.messages`／`gen_ai.output.messages`）も入っています。本文は個人情報を含みうるので、トレースを読める人を絞ります。アプリ側の span に本文を記録するかどうかは `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` で切り替えます（このコードは開発用に `true`）。
 
 ### 10. 静かな失敗を、属性で探す
 ```powershell
@@ -176,10 +177,12 @@ az monitor app-insights query --resource-group $RG --app ai103-appinsights `
 ```
 ```text
 2026-09-23T22:33:19.159492Z	54b9661c9f803187fe1111920aae3c14	True	unknown product_code: ZZ9
+2026-09-23T22:50:34.200837Z	59e2c0e348d5ceb99b5c8e7a7795a1b4	True	unknown product_code: ZZ9
 ```
 - `app.tool_error` は、`main.py` の `get_inventory` が失敗したときに足している属性です。この属性で絞り込むと、**成功扱いの span の中から、ツールが失敗した実行だけ**を拾えます。原因は `unknown product_code: ZZ9`（在庫データに無い商品コード）です。
-- 直近1時間に実行した分がすべて出ます。何度か実行した場合は複数行になります。
+- 直近1時間に実行した分がすべて出ます。上の例は2回実行した場合で、下の行が手順7〜9の例の実行です。
 - `@trace_function` が記録する引数・戻り値（`code.function.*`）は、Application Insights の customDimensions には出ません。KQL で探したい値は、このように `code.` 以外の名前で足します。
+- なお `@trace_function` は、`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` をオフにしても、引数と戻り値を**必ず** span に記録します。Application Insights の列には出なくても、ほかの送り先では見えるので、個人情報を受け取る関数に付けるときは注意します。
 
 ### 11. 後片付け
 - エージェントと会話は、実行のたびに `finally` で削除されます（手順7の `残り: 0 件`）。
@@ -188,7 +191,7 @@ az monitor app-insights query --resource-group $RG --app ai103-appinsights `
 
 ## ポイント（試験の論点）
 - **server-side トレース**：プロジェクトに Application Insights を接続するだけで、Foundry がエージェントの span を記録します（コード変更なし）。プロンプト エージェントのトレースは一般提供（GA）です。
-- **client-side トレース**：`configure_azure_monitor()`（送り先）＋ `AIProjectInstrumentor().instrument()`（GenAI 計測。プレビュー）で、自分のコードの span を足します。`AZURE_EXPERIMENTAL_ENABLE_GENAI_TRACING=true` は `instrument()` より**前**に設定します。
+- **client-side トレース**：`configure_azure_monitor()`（送り先）＋ `AIProjectInstrumentor().instrument()`（GenAI 計測。プレビュー）で、自分のコードの span を足します。`AZURE_EXPERIMENTAL_ENABLE_GENAI_TRACING=true` は `instrument()` より**前**に設定します。設定し忘れてもエラーにはならず、**警告が出るだけでエージェントの span が記録されません**（このコードは `main.py` の先頭で設定済み）。
 - **client と server をつなぐ**：OpenAI クライアントは、計装の**後**に `get_openai_client()` で取ります（トレースの文脈がリクエストに付き、サービス側の span が同じトレースにつながる）。ポータルのトレースで特定のエージェントに紐づけるには、`agent_reference` に `name` と `id` の両方を渡します。
 - **エラー分析**：失敗が例外でなく戻り値に出ると、span は成功のままです。検索できる属性（`app.tool_error` など）を足し、span を辿って「どの呼び出しで・どんな入力で・何が返ったか」を読みます。
 - **サンプリング**：Azure Monitor の既定の設定では span が間引かれることがあるので、このデモは `sampling_ratio=1.0` で全件を送ります。本番はコストに応じて下げます。
@@ -199,6 +202,7 @@ az monitor app-insights query --resource-group $RG --app ai103-appinsights `
 | 実行時に接続文字列の取得で失敗（接続が見つからない） | 手順3で `AppInsights` の接続があるか確かめる。無ければ L1-6 の手順4・5 |
 | 手順8〜10で何も表示されない | 取り込みに数分かかります。待って再実行。`operation_Id` の貼り間違いも確かめる |
 | 手順8〜10で `Forbidden`／権限エラー | Application Insights に Log Analytics Reader 以上が要ります（テーブルが保護されている場合は Privileged Monitoring Data Reader も） |
+| エージェントの span（`create_agent`・`invoke_agent`）が出ない | `AZURE_EXPERIMENTAL_ENABLE_GENAI_TRACING=true` が `instrument()` より前に設定されているか（設定し忘れは警告だけでエラーにならない） |
 | `responsesapi` の span が無い／別のトレースに分かれる | OpenAI クライアントを `instrument()` の**後**に `get_openai_client()` で取っているか |
 | `get_inventory` の span が無い | `@trace_function("get_inventory")` のように、`()` 付きで付けているか |
 | `[応答1] function_call 0 件` で、`[実行]` が出ないまま答える | モデルがツールを呼ぶかはモデルが決めます。質問に商品コードが入っているか確かめる |
