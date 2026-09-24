@@ -97,7 +97,7 @@ az storage account create --name $ST --resource-group $SRG --location japaneast 
 ```
 - Search は **Basic** で作ります。**システム割り当てマネージド ID**（`--identity-type SystemAssigned`）は、Search が Blob と埋め込みモデルをキー無しで読むために要ります。
 - `--auth-options aadOrApiKey` で、**ロール（Microsoft Entra ID）でも呼べる**ようにします（既定は API キーだけ）。
-- Search の作成には **10〜20分**かかります。終わると `basic  SystemAssigned  succeeded` が表示されます。
+- Search の作成には **10〜20分**かかります。終わると `basic  SystemAssigned  Succeeded` が表示されます。
 - 別のターミナルで続きをやるときは、名前を取り直します：`$SRG = "rg-ai103-search"; $SEARCH = az search service list -g $SRG --query "[0].name" -o tsv; $ST = az storage account list -g $SRG --query "[0].name" -o tsv`
 
 ### 4. 文書をストレージにアップロードする
