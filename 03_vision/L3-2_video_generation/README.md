@@ -7,7 +7,7 @@
 
 ## ⚠️ 動画生成モデルの廃止予定
 - `sora-2`（2025-12-08 版）は**プレビュー**で、Microsoft Learn のモデル退役スケジュールでは **2026-10-15 に退役**、後継モデルは記載なし（2026-09-24 確認）。退役後の呼び出しは `410 Gone` になります。
-- 実行すると openai の Python パッケージが `The Sora API is scheduled to permanently shut down on September 24, 2026.` という警告を出します。これは SDK が出す予告で、講座の検証では **2026-09-24 に Azure 上で生成できました**。
+- 実行すると openai の Python パッケージが `The Sora API is scheduled to permanently shut down on September 24, 2026.` という警告を出します。これは OpenAI 社が自社で提供している Sora の API の終了予告で、**Azure の `sora-2` の退役日（2026-10-15）とは別**です。講座の検証では **2026-09-24 当日も Azure 上で生成できました**。
 - 退役後にこのレッスンを実行できなくなった場合は、動画（実践レクチャー）で流れを確認してください。後継の動画生成モデルが出たら、手順2〜4のモデル名・バージョンを読み替えます（非同期ジョブの流れは同じ考え方です）。
 
 ## ファイル構成
@@ -60,7 +60,7 @@ $ACCOUNT = "ai103-vid-$(Get-Random -Minimum 10000 -Maximum 99999)"
 $DEPLOY = "sora-2"
 $ACCOUNT
 ```
-Foundry リソースの名前はサブドメインになるので**世界で一意**にする必要があり、末尾に乱数を付けます。
+Foundry リソースの名前はサブドメインになるので**世界で一意**にする必要があり、重なりにくいよう末尾に乱数を付けます（重なったときは手順4が `CustomDomainInUse` になります）。
 
 ### 2. リージョンで使えるか（モデルとクォータ）を確かめる
 ```powershell
@@ -69,8 +69,8 @@ az cognitiveservices model list --location $LOCATION `
 az cognitiveservices usage list --location $LOCATION `
   --query "[?contains(name.value,'sora-2')].{name:name.value, used:currentValue, limit:limit}" -o table
 ```
-- 1つ目で、そのリージョンにモデルがあるか、各バージョンの退役日（`retire`）が分かります。
-- 2つ目で、サブスクリプションのクォータの使用量（`used`）と上限（`limit`）が分かります。**used が limit に達していると、手順5が `InsufficientQuota` で失敗します**。講座の検証では eastus2 がこの状態だったので、空きのある swedencentral を使っています。空きが無いときは `$LOCATION` を別の対応リージョンに変えます。
+- 1つ目で、そのリージョンにモデルがあるか、各バージョンの退役日（`retire`）が分かります。退役日を過ぎた版（2025-10-06 版は 2026-07-15 に退役済み）は使えません。
+- 2つ目で、サブスクリプションのクォータの使用量（`used`）と上限（`limit`）が分かります。**上限から使用量を引いた空き（limit − used）が、手順5で指定する容量（10）より少ないと、手順5が `InsufficientQuota` で失敗します**。講座の検証では eastus2 がこの状態だったので、空きのある swedencentral を使っています。空きが無いときは `$LOCATION` を別の対応リージョンに変えます。
 
 ### 3. リソースグループを作る（swedencentral）
 ```powershell
@@ -114,7 +114,7 @@ az role assignment list --assignee $MY_ID --scope $ACCOUNT_ID --include-inherite
   --query "[].roleDefinitionName" -o tsv
 ```
 - CLI で作ったリソースには、作った人にも推論のロールは自動では付きません。**Foundry User**（旧 Azure AI User。改称の途中なので GUID で指定）を付けます。
-- 一覧に `Foundry User` が出れば OK です（上位のスコープから継承したロールも並びます）。反映には最大5分ほどかかることがあります。
+- 一覧に `Foundry User` が出れば OK です（上位のスコープから継承したロールも並びます）。反映には数分、長いと10分ほどかかることがあります。
 
 ### 7. 接続先（リソースの `/openai/v1/`）を取得する
 ```powershell
@@ -208,7 +208,7 @@ L3-1 の `ai103-gen-…` も一覧に出たら、その名前で同じように 
 - **手順4で `CustomDomainInUse`**：名前が他と重なりました。手順1の `$ACCOUNT` を作り直して、もう一度実行します。
 - **`エラー: ... 400 ... Invalid value`**：`--size`／`--seconds`（または `.env` の `VIDEO_SIZE`／`VIDEO_SECONDS`）が対応値になっているか確かめます。
 - **`エラー: ... 404 ...`**：`FOUNDRY_OPENAI_BASE_URL` がリソースの `/openai/v1/` 形式か、`VIDEO_MODEL` がデプロイ名と一致しているか確かめます。
-- **`エラー: ... 401 ...` / `403 ...`**：手順6のロールの反映待ちか、`az login` の切れです。5分ほど待って再実行してください。
+- **`エラー: ... 401 ...` / `403 ...`**：手順6のロールの反映待ちか、`az login` の切れです。ロールの反映には最大10分ほどかかるので、少し待って再実行してください。
 - **`失敗しました: ...`（状態が `failed`）**：プロンプトが写実的・IP に当たると判定された可能性があります。イラスト調など穏当な内容に変えてください。
 - **`エラー: ... 410 ...`**：モデルが退役しています。このレッスンは実行できないので、動画で流れを確認してください。
 - **`AttributeError: 'OpenAI' object has no attribute 'videos'`**：openai パッケージが古いです。`pip install -U openai` で更新します。
