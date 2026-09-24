@@ -65,10 +65,10 @@ az cognitiveservices account deployment list `
 ### 3. Speech とプロジェクトの接続先を取得する
 ```powershell
 az cognitiveservices account show --name $FOUNDRY --resource-group $RG --query "properties.endpoint" -o tsv
-az cognitiveservices account show --name $FOUNDRY --resource-group $RG --query "properties.endpoints.\"AI Foundry API\"" -o tsv
+"https://$FOUNDRY.services.ai.azure.com/api/projects/ai103-project"
 ```
-- 1行目の `https://<リソース名>.cognitiveservices.azure.com/` が **Speech の接続先**（カスタムドメインのエンドポイント）です。
-- 2行目の `https://<リソース名>.services.ai.azure.com/` の末尾に `api/projects/ai103-project` を足したものが**プロジェクトの接続先**（LLM 用）です。
+- 1行目の結果 `https://<リソース名>.cognitiveservices.azure.com/` が **Speech の接続先**（カスタムドメインのエンドポイント）です。
+- 2行目は、リソース名から**プロジェクトの接続先**（LLM 用）を組み立てて表示します。
 - **同じ Foundry リソースでも、Speech と LLM で宛先が違います**。手順5で `.env` に貼ります。
 
 ### 4. 仮想環境を作って依存を入れる
@@ -84,7 +84,7 @@ pip install -r requirements.txt
 cp .env.sample .env
 code .env
 ```
-開いた `.env` の `SPEECH_ENDPOINT=` に手順3の1行目、`PROJECT_ENDPOINT=` に「2行目＋`api/projects/ai103-project`」を貼って保存します。`MODEL_DEPLOYMENT=gpt-5.4` は最初から入っています。
+開いた `.env` の `SPEECH_ENDPOINT=` に手順3の1行目の結果、`PROJECT_ENDPOINT=` に2行目の結果を貼って保存します。`MODEL_DEPLOYMENT=gpt-5.4` は最初から入っています。
 
 ### 6. TTS で入力の音声 `input.wav` を作る
 ```powershell
