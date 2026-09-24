@@ -93,7 +93,7 @@ python create_agent_with_voicelive.py
 ```
 ```text
 Agent created: ai103-voice-agent (version 1)
-  モデル: gpt-5.4 ／ Voice Live 設定: 409 字 → metadata 1 個に分割
+  モデル: gpt-5.4 ／ Voice Live 設定: 422 字 → metadata 1 個に分割
 ```
 エージェントの定義（モデルと指示）に、Voice Live の設定（声・話し終わりの検出・ノイズ抑制）を **metadata** として付けて作ります。metadata の値は1つ 512 字までなので、長い設定は分割して入れる作りにしてあります（今回の設定は1個に収まります）。定義が前回とまったく同じなら、もう一度実行しても版の番号は増えません。
 
@@ -152,6 +152,7 @@ Agent deleted: ai103-voice-agent（同じ名前の残り: 0 件）
 - **エージェント経由の Voice Live はキー認証に対応していない**。Entra ID（`DefaultAzureCredential` など）で接続する。
 - **エージェントの指定は `connect()` のキーワード引数** `agent_name=` と `project_name=`（必要なら `agent_version=`・`conversation_id=`）。
 - **声・話し終わりの検出（VAD）・ノイズ抑制は、エージェントの metadata に Voice Live 設定として持たせられる**。クライアントは「どのエージェントか」を指定するだけでよい。
+- **話し終わりの検出の種類**：日本語を含む多言語なら `azure_semantic_vad_multilingual`（`azure_semantic_vad` は英語向け）。話し終わりの判定モデルも `semantic_detection_v1_multilingual` を使う。
 - **接続できたかの目印は `session.updated`**。名前の間違いなどは、接続のあとに `error` イベントで届く。
 - **Voice Live の入出力の音声は PCM16（24kHz・16bit・モノラル）**。声は `response.audio.delta` の断片で届く。
 - `api_version="2026-01-01-preview"` は、公式のエージェント版クイックスタートのサンプルと同じ版です。Voice Live は API の版の更新が速いので、版を明示して書きます。

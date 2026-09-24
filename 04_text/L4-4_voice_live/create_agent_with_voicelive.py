@@ -39,7 +39,7 @@ def create(project: AIProjectClient) -> None:
             "voice": {"name": "ja-JP-NanamiNeural", "type": "azure-standard"},
             "input_audio_transcription": {"model": "azure-speech"},
             "turn_detection": {
-                "type": "azure_semantic_vad",
+                "type": "azure_semantic_vad_multilingual",   # 日本語を含む多言語向け（azure_semantic_vad は英語向け）
                 "end_of_utterance_detection": {"model": "semantic_detection_v1_multilingual"},
             },
             "input_audio_noise_reduction": {"type": "azure_deep_noise_suppression"},
