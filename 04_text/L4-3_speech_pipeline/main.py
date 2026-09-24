@@ -57,7 +57,7 @@ def speech_to_text(path: str) -> str:
     if result.reason == speechsdk.ResultReason.Canceled:
         # 認証・エンドポイントの誤りはここに来る（error_details に理由が入る）
         raise RuntimeError(f"STT 失敗: Canceled {result.cancellation_details.error_details.splitlines()[0][:120]}")
-    raise RuntimeError(f"STT 失敗: {result.reason}（NoMatch＝音声を聞き取れなかった）")
+    raise RuntimeError(f"STT 失敗: {result.reason}（音声を聞き取れなかった）")
 
 
 def process_with_llm(text: str) -> str:
