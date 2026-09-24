@@ -84,7 +84,7 @@ az cognitiveservices account deployment create `
   --sku-name GlobalStandard --sku-capacity 3 `
   --query "{name:name, model:properties.model.name, sku:sku.name, state:properties.provisioningState}" -o table
 ```
-`Succeeded` になれば完了です。`gpt-image-2` は一般提供（GA）で、利用申請は要りません。Global Standard のデプロイは、置いてあるだけでは課金されません（使った分だけの従量課金で、画像のサイズや品質によって1枚あたりの額が変わります）。
+`Succeeded` になれば完了です。`gpt-image-2` は一般提供（GA）で、利用申請は要りません。Global Standard のデプロイは、置いてあるだけでは課金されません（使った分だけの従量課金です。課金はトークン単位で数えられ、画像のサイズや品質によって1枚あたりの額が変わります）。
 
 ### 5. 自分に Foundry User を割り当てる
 ```powershell
