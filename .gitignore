@@ -26,3 +26,6 @@ desktop.ini
 *.log
 result.json
 out/
+
+# 音声のハンズオンで生成する wav（L4-3 など）
+*.wav
