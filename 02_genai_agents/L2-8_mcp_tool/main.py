@@ -44,10 +44,6 @@ def main() -> None:
     project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCredential())
     openai = project.get_openai_client()
 
-    # 接続は名前と種類だけ確かめる（資格情報の値は取り出さない）
-    conn = project.connections.get(MCP_CONNECTION_NAME)
-    print(f"接続: {conn.name}（種類: {conn.type}）")
-
     # リモート MCP サーバーをツールとして宣言する。呼び出しのたびに承認を求める
     tool = MCPTool(
         server_label="github",
@@ -59,6 +55,10 @@ def main() -> None:
 
     agent = conversation = None
     try:
+        # 接続は名前と種類だけ確かめる（資格情報の値は取り出さない）
+        conn = project.connections.get(MCP_CONNECTION_NAME)
+        print(f"接続: {conn.name}（種類: {conn.type}）")
+
         agent = project.agents.create_version(
             agent_name=AGENT_NAME,
             definition=PromptAgentDefinition(
