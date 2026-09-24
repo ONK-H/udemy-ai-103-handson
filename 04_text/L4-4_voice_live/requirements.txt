@@ -1,4 +1,4 @@
-azure-ai-voicelive>=1.2.0b4
+azure-ai-voicelive>=1.3.0
 # azure-ai-voicelive の非同期接続（aio.connect）に必要（無いと ImportError）
 aiohttp
 azure-ai-projects>=2.0.0
