@@ -14,6 +14,7 @@ GPT-image 系は応答を base64 (b64_json) で返すのでデコードして保
 """
 
 import os
+import time
 import base64
 from io import BytesIO
 
@@ -39,11 +40,12 @@ def save_b64_png(b64_data: str, path: str):
     """base64 の画像データをデコードして PNG 保存する。"""
     img = Image.open(BytesIO(base64.b64decode(b64_data)))
     img.save(path)
-    print(f"保存しました: {path}")
+    print(f"保存しました: {path}（{img.size[0]}x{img.size[1]}）")
 
 
 def generate_image(prompt: str, path: str):
     """テキストから画像を生成して保存(GPT-image 系は base64 を返す)。"""
+    t0 = time.time()
     result = client.images.generate(
         model=IMAGE_MODEL,
         prompt=prompt,
@@ -53,6 +55,7 @@ def generate_image(prompt: str, path: str):
         output_format="png",
     )
     save_b64_png(result.data[0].b64_json, path)
+    print(f"  生成にかかった時間: {time.time() - t0:.0f} 秒")
 
 
 def make_center_mask(src_path: str, mask_path: str):
@@ -68,11 +71,12 @@ def make_center_mask(src_path: str, mask_path: str):
     left, top, right, bottom = w // 4, h // 4, w * 3 // 4, h * 3 // 4
     draw.rectangle([left, top, right, bottom], fill=(0, 0, 0, 0))
     mask.save(mask_path)
-    print(f"保存しました: {mask_path}(中央が編集対象)")
+    print(f"保存しました: {mask_path}（中央が編集対象）")
 
 
 def edit_image(src_path: str, mask_path: str, prompt: str, out_path: str):
     """inpainting: 画像 + マスク + プロンプトで、透明部分だけを書き換える。"""
+    t0 = time.time()
     with open(src_path, "rb") as image_file, open(mask_path, "rb") as mask_file:
         result = client.images.edit(
             model=IMAGE_MODEL,
@@ -84,9 +88,11 @@ def edit_image(src_path: str, mask_path: str, prompt: str, out_path: str):
             quality="medium",
         )
     save_b64_png(result.data[0].b64_json, out_path)
+    print(f"  編集にかかった時間: {time.time() - t0:.0f} 秒")
 
 
 if __name__ == "__main__":
+    print(f"デプロイ: {IMAGE_MODEL}")
     try:
         # (1) 生成: テキスト -> 画像
         generate_image(
