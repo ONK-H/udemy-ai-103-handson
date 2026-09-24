@@ -86,7 +86,7 @@ def main() -> None:
     global MODEL
     MODEL = args.deployment or MODEL
     headers = {"x-policy-id": args.policy} if args.policy else None
-    print(f"デプロイ: {MODEL}　上書き: {args.policy or 'なし'}")
+    print(f"デプロイ: {MODEL}  上書き: {args.policy or 'なし'}")
 
     with (
         DefaultAzureCredential() as credential,
