@@ -21,7 +21,7 @@
 - L0-3（Hello, Foundry）を終えていること（講座共通のリソースグループ `rg-ai103`・Foundry リソース・プロジェクト `ai103-project`・Foundry User ロール）。
 - 講座共通のリソースに `gpt-5.4-nano` のデプロイがあること（手順2で確かめます。無ければ `deployment_strict.json` と同じモデルで作っておきます）。
 - `az login` 済み ／ Python 3.11+
-- ロール：ガードレールとデプロイを作るには、Foundry リソースに **Contributor**（または Cognitive Services Contributor）以上。評価用のリソースグループを作るには、サブスクリプションに Contributor 以上。推論と評価には、プロジェクトに **Foundry User**。
+- ロール：ガードレールとデプロイを作るには、Foundry リソースに **Foundry Account Owner**、または **Contributor**（Cognitive Services Contributor）以上。評価用のリソースグループを作るには、サブスクリプションに Contributor 以上。推論と評価には、プロジェクトに **Foundry User**。
 - 費用：推論数回と評価数回で数円程度です。評価用の Foundry リソース自体は、置いておくだけでは課金されません（最後に削除します）。
 
 ## 進め方（コピペで実行できます）
@@ -48,6 +48,8 @@
 | 16 | 後片付け②：評価用のリソースグループを消して purge する |
 
 > コマンドは **PowerShell** 用です（Codespaces のターミナルで `pwsh` を選ぶ／Windows の PowerShell／Mac・Linux は PowerShell 7 を入れて `pwsh`）。行末の `` ` `` は行の継続です。
+>
+> ⚠️ **2周目に通すときの注意**：手順15で消したガードレールと**同じ名前**で手順4を作り直すと、講座の検証では、作り直した直後に手順11の `x-policy-id` がまったく効かず（B だけでなく D や E まで通り、注釈も出ない）、しばらく直らなかったことが1回ありました。2周目は `ai103-custom` を**別の名前**（例：`ai103-custom2`。手順4・5・11・15 と `deployment_strict.json` の名前もそろえる）にするか、手順11で **B と D が止まる**ことを必ず確かめてください。
 >
 > 最初に、リポジトリのルートからこのフォルダーへ移動しておきます。
 > ```powershell
@@ -83,7 +85,7 @@ az rest --method post --url "$API/raiBlocklists/ai103-words/addRaiBlocklistItems
 az rest --method get --url "$API/raiBlocklists/ai103-words/raiBlocklistItems?$V" `
   --query "value[].{name:name, pattern:properties.pattern, regex:properties.isRegex}" -o table
 ```
-`ai103-words` の中に `Project Falcon` と `ファルコン計画` の2語が入ればOKです。
+`ai103-words` の中に `Project Falcon` と `ファルコン計画` の2語が入ればOKです（`isRegex: false` は正規表現ではないという意味で、文の中にその語が含まれていれば止まります）。
 - **ブロックリスト**は、害の分類では拾えない「その会社だけの止めたい語」（開発コード名・競合の名前など）を、完全一致か正規表現で止める仕組みです。
 - ⚠️ 作成の応答には作成者のアカウント（メールアドレス）が含まれるので、`--query` や `-o none` で必要な値だけを表示しています。
 
@@ -93,6 +95,7 @@ az rest --method put --url "$API/raiPolicies/ai103-custom?$V" --body "@guardrail
   --query "{name:name, base:properties.basePolicyName, mode:properties.mode}" -o table
 ```
 Name が `ai103-custom` と表示されればOKです。`guardrail/guardrail_strict.json` を開くと、ガードレールの中身が読めます。
+- どの項目も `"blocking": true` なので、**検出したら止めます**（止めるかどうかは各項目の `blocking` で決まる。`mode` は止めるかどうかの設定ではない）。
 - `contentFilters`：4つの害（Hate／Sexual／Violence／Selfharm）を、入力（`Prompt`）と出力（`Completion`）の両方で見ます。`severityThreshold` が `Low` なら **low 以上を止める**ので、既定（`Medium`＝medium 以上を止める）より**多くを止めます**。
 - `Jailbreak`：プロンプト攻撃（脱獄）を検出して止めます（Prompt Shields）。
 - `customBlocklists`：手順3のブロックリストを、入力と出力の両方に効かせます。
@@ -160,6 +163,7 @@ python block_demo.py gpt-5.4-nano-strict
 python block_demo.py gpt-5.4-nano --policy ai103-custom
 ```
 デプロイは既定のガードレールのままですが、リクエストの `x-policy-id` ヘッダーで `ai103-custom` を指定したので、**B が止まります**。デプロイを作り直さずに、呼び出しごとにガードレールを切り替えられます。
+- 1行目の `上書き: ai103-custom` は、プログラムが引数をそのまま表示しているだけです。**上書きが効いた証拠は B が止まったこと**です（既定のガードレールでは B は通るため）。あわせて D も止まることを確かめます（止まらなければ、上の「2周目の注意」のケース）。
 - 存在しない名前を指定すると、すべての入力が 400 になります（公式の表記は `InvalidContentFilterPolicy`。講座で試したときは `code: user_error` と「Your request contains invalid content filter policy.」の文言でした）。
 
 ### 12. 講座共通のプロジェクトで安全性評価を試す（Japan East）
@@ -201,7 +205,7 @@ python safety_eval.py
 - 評価は**判定を返すだけ**で、ブロックはしません。公開してよいかは人が判断します（human-in-the-loop）。
 
 ### 15. 後片付け①：ガードレール・ブロックリスト・デプロイを消す
-使っている側から順に消します（デプロイ → ガードレール → ブロックリスト。割り当てられたガードレールや、ガードレールが参照しているブロックリストは消せないため）。
+使っている側から順に消します（デプロイ → ガードレール → ブロックリスト。割り当てられたガードレールは消せないため。ブロックリストも、使っている側を先に消すのが安全です）。
 ```powershell
 az cognitiveservices account deployment delete --name $FOUNDRY --resource-group $RG --deployment-name gpt-5.4-nano-strict
 az rest --method delete --url "$API/raiPolicies/ai103-custom?$V"
@@ -225,7 +229,7 @@ az cognitiveservices account list-deleted --query "[?name=='$EVAL_ACCOUNT'].name
 最後の行で何も表示されなければ、完全に消えています。purge には、**サブスクリプション単位**の Contributor（または Cognitive Services Contributor）が必要です。
 
 ## ポイント（試験の論点）
-- ガードレール＝**RAI ポリシー**。害の分類ごとに**重大度のしきい値**（Low／Medium／High）と、入力・出力のどちらで見るかを決め、**デプロイに割り当てる**。既定は `Microsoft.DefaultV2`（medium 以上を止める）。
+- ガードレール＝**RAI ポリシー**。害の分類ごとに**重大度のしきい値**（Low／Medium／High）と、入力・出力のどちらで見るかを決め、**デプロイに割り当てる**（エージェントへの割り当てはプレビュー）。止めるかどうかは各項目の `blocking`。既定は `Microsoft.DefaultV2`（medium 以上を止める）。
 - **しきい値の読み方**：`Low` は「low 以上を止める」＝最も多くを止める。`High` は「high だけを止める」＝最も少ない。
 - **ブロックリスト**は、害の分類とは別に、止めたい語を完全一致か正規表現で止める。ガードレールに入れて使う。
 - **Prompt Shields**（脱獄＝ユーザーによるプロンプト攻撃）は入力で止める。
