@@ -3,7 +3,7 @@
 Azure Content Understanding の**カスタムアナライザー**を作り、請求書の PDF から **構造化フィールド**（会社名・合計・要約・種別）と、RAG 向けの **markdown** を同時に取り出すハンズオンです。フィールドの3つの方式（**extract**／**generate**／**classify**）を1つずつ使い、各フィールドの **confidence**（信頼度）も確かめます。
 
 > 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential`）。APIキーは使いません。
-> 課金は、解析したページの分と、アナライザーが使うモデルのトークンの分です（1ページの請求書を数回解析する程度なら少額です）。モデルのデプロイ（Standard 系）は、置いておくだけでは課金されません。
+> 課金は、解析したページの分（コンテンツ抽出）と、Content Understanding が文脈を整える処理の分（コンテキスト化）、そしてアナライザーが使うモデルのトークンの分です（1ページの請求書を数回解析する程度なら少額です）。モデルのデプロイ（Standard 系）は、置いておくだけでは課金されません。
 
 ## ファイル構成
 | ファイル | 役割 |
@@ -189,7 +189,7 @@ Remove-Item Env:CU_COMPLETION_MODEL
 Remove-Item output.md
 ```
 - アナライザーはスクリプトが削除済みです。
-- モデルの既定と `text-embedding-3-large` のデプロイは、**残しておきます**（置いておくだけでは課金されません。情報抽出の後続レッスンでも使えます）。消すときは次のコマンドです。
+- モデルの既定と `text-embedding-3-large` のデプロイは、**残しておきます**（置いておくだけでは課金されないので、残しておいても構いません）。消すときは次のコマンドです。
   ```powershell
   az cognitiveservices account deployment delete --name $FOUNDRY --resource-group $RG --deployment-name text-embedding-3-large
   ```
