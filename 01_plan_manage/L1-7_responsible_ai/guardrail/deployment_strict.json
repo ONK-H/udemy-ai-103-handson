@@ -2,6 +2,6 @@
   "sku": { "name": "GlobalStandard", "capacity": 10 },
   "properties": {
     "model": { "format": "OpenAI", "name": "gpt-5.4-nano", "version": "2026-03-17" },
-    "raiPolicyName": "ai103-strict"
+    "raiPolicyName": "ai103-custom"
   }
 }

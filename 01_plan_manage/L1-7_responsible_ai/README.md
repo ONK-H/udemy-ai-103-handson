@@ -10,7 +10,7 @@
 |---|---|
 | `guardrail/blocklist.json` | ブロックリスト（止めたい語の一覧）の定義 |
 | `guardrail/blocklist_items.json` | ブロックリストに入れる語（例：開発コード名「ファルコン計画」） |
-| `guardrail/guardrail_strict.json` | カスタムのガードレール `ai103-strict`（4つの害を**低い重大度から**止める＋ブロックリスト） |
+| `guardrail/guardrail_strict.json` | カスタムのガードレール `ai103-custom`（4つの害を**低い重大度から**止める＋ブロックリスト） |
 | `guardrail/deployment_strict.json` | ガードレールを割り当てたデプロイ `gpt-5.4-nano-strict` の定義 |
 | `block_demo.py` | 5つの入力（安全／社外秘の語／脱獄の指示／暴行の場面／剣で戦う場面）を投げ、通ったか・入力で止まったか・出力で止まったかを1行ずつ表示 |
 | `safety_eval.py` | `ContentSafetyEvaluator` で `dataset.jsonl` の回答を採点（4つの害のスコアとラベル） |
@@ -89,10 +89,10 @@ az rest --method get --url "$API/raiBlocklists/ai103-words/raiBlocklistItems?$V"
 
 ### 4. カスタムのガードレールを作る
 ```powershell
-az rest --method put --url "$API/raiPolicies/ai103-strict?$V" --body "@guardrail/guardrail_strict.json" `
+az rest --method put --url "$API/raiPolicies/ai103-custom?$V" --body "@guardrail/guardrail_strict.json" `
   --query "{name:name, base:properties.basePolicyName, mode:properties.mode}" -o table
 ```
-Name が `ai103-strict` と表示されればOKです。`guardrail/guardrail_strict.json` を開くと、ガードレールの中身が読めます。
+Name が `ai103-custom` と表示されればOKです。`guardrail/guardrail_strict.json` を開くと、ガードレールの中身が読めます。
 - `contentFilters`：4つの害（Hate／Sexual／Violence／Selfharm）を、入力（`Prompt`）と出力（`Completion`）の両方で見ます。`severityThreshold` が `Low` なら **low 以上を止める**ので、既定（`Medium`＝medium 以上を止める）より**多くを止めます**。
 - `Jailbreak`：プロンプト攻撃（脱獄）を検出して止めます（Prompt Shields）。
 - `customBlocklists`：手順3のブロックリストを、入力と出力の両方に効かせます。
@@ -103,7 +103,7 @@ Name が `ai103-strict` と表示されればOKです。`guardrail/guardrail_str
 az rest --method put --url "$API/deployments/gpt-5.4-nano-strict?$V" --body "@guardrail/deployment_strict.json" `
   --query "{name:name, guardrail:properties.raiPolicyName, state:properties.provisioningState}" -o table
 ```
-Guardrail が `ai103-strict`、State が `Succeeded` になればOKです（`Creating` なら少し待って手順2の一覧で確かめます）。
+Guardrail が `ai103-custom`、State が `Succeeded` になればOKです（`Creating` なら少し待って手順2の一覧で確かめます）。
 - ガードレールは**デプロイ単位**で割り当てます（`raiPolicyName`）。同じモデルでも、デプロイごとに別のガードレールを付けられます。
 
 ### 6. プロジェクトのエンドポイントを取得する
@@ -157,9 +157,9 @@ python block_demo.py gpt-5.4-nano-strict
 
 ### 11. リクエスト単位でガードレールを上書きする（`x-policy-id`）
 ```powershell
-python block_demo.py gpt-5.4-nano --policy ai103-strict
+python block_demo.py gpt-5.4-nano --policy ai103-custom
 ```
-デプロイは既定のガードレールのままですが、リクエストの `x-policy-id` ヘッダーで `ai103-strict` を指定したので、**B が止まります**。デプロイを作り直さずに、呼び出しごとにガードレールを切り替えられます。
+デプロイは既定のガードレールのままですが、リクエストの `x-policy-id` ヘッダーで `ai103-custom` を指定したので、**B が止まります**。デプロイを作り直さずに、呼び出しごとにガードレールを切り替えられます。
 - 存在しない名前を指定すると、すべての入力が 400 になります（公式の表記は `InvalidContentFilterPolicy`。講座で試したときは `code: user_error` と「Your request contains invalid content filter policy.」の文言でした）。
 
 ### 12. 講座共通のプロジェクトで安全性評価を試す（Japan East）
@@ -204,7 +204,7 @@ python safety_eval.py
 使っている側から順に消します（デプロイ → ガードレール → ブロックリスト。割り当てられたガードレールや、ガードレールが参照しているブロックリストは消せないため）。
 ```powershell
 az cognitiveservices account deployment delete --name $FOUNDRY --resource-group $RG --deployment-name gpt-5.4-nano-strict
-az rest --method delete --url "$API/raiPolicies/ai103-strict?$V"
+az rest --method delete --url "$API/raiPolicies/ai103-custom?$V"
 az rest --method delete --url "$API/raiBlocklists/ai103-words?$V"
 az rest --method get --url "$API/raiPolicies?$V" --query "value[].name" -o tsv
 ```
@@ -237,7 +237,8 @@ az cognitiveservices account list-deleted --query "[?name=='$EVAL_ACCOUNT'].name
 | 症状 | 対処 |
 |---|---|
 | 手順5で `DeploymentModelNotSupported` などのエラー | `deployment_strict.json` のモデル名・version を、手順2の一覧の `gpt-5.4-nano` の値に合わせる |
-| 手順10で B が止まらない | ブロックリストとガードレールの反映待ち。数分待って再実行する。手順2の一覧で Guardrail 列が `ai103-strict` か確かめる |
+| 手順10で B が止まらない | ブロックリストとガードレールの反映待ち。数分待って再実行する。手順2の一覧で Guardrail 列が `ai103-custom` か確かめる |
+| 手順11で B が止まらず、注釈も出ない（D や E まで通る） | 講座の検証で、同じ名前のガードレールを消して作り直した直後に起きた（デプロイへの割り当ては正しく効き、`x-policy-id` だけが効かなかった）。`guardrail_strict.json` はそのままに、**別の名前**でガードレールを作り直して手順11を試すと止まった |
 | 手順12・14で `not supported in the ... region` | 評価サービスの対象外のリージョン。手順13の East US 2 のプロジェクトを使う |
 | 手順14で 403 | 評価用のプロジェクトに Foundry User が無い。手順13の最後のコマンドで付けて、5分ほど待つ |
 | 手順15で「使用中」のエラー | 消す順番はデプロイ → ガードレール → ブロックリスト |

@@ -3,7 +3,7 @@
 同じ5つの入力を、指定したデプロイに投げて、通ったか止まったかを1行ずつ表示する。
   python block_demo.py                       → .env の MODEL_DEPLOYMENT（既定のガードレール）
   python block_demo.py gpt-5.4-nano-strict   → カスタムのガードレールを割り当てたデプロイ
-  python block_demo.py gpt-5.4-nano --policy ai103-strict
+  python block_demo.py gpt-5.4-nano --policy ai103-custom
                                              → リクエスト単位の上書き（x-policy-id ヘッダー）
 
 止まり方は2通りある:
