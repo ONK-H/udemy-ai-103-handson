@@ -19,7 +19,7 @@
 - `az login` 済み ／ Python 3.11+
 - デプロイ `gpt-5.4` があること（手順2で確かめます。無ければモデル選定のレッスン（L1-1）の README の手順2で作成）。
 - **Azure Speech は、講座共通の Foundry リソースにそのまま入っています**。Speech 用のリソースを別に作る必要はありません。キーレスで呼ぶには**カスタムドメインのエンドポイント**が要ります（Foundry リソースには最初から付いています）。
-- ロール：Speech の公式ページは **Cognitive Services Speech User**（または Speech Contributor）を案内しています。講座の収録環境では、Foundry User を持つアカウントでそのまま通りました。401 / 403 になったら、Foundry リソースに Cognitive Services Speech User を付けてください（つまずき参照）。
+- ロール：Speech の公式ページは **Cognitive Services Speech User**（または Speech Contributor）を案内していますが、Foundry の RBAC ページは Cognitive Services で始まるロールを付けないよう案内しており、公式の中で割れています。講座の収録環境では、Foundry User を持つアカウントでそのまま通りました。401 / 403 になったら、まず Foundry User が付いているかを確かめます（つまずき参照）。
 
 ## 進め方（コピペで実行できます）
 
@@ -147,13 +147,13 @@ Remove-Item input.wav, output.wav
 
 ## 注意点（試験の論点）
 - **キーレスの Speech SDK**：`SpeechConfig(token_credential=<資格情報>, endpoint=<カスタムドメイン>)`。STT（`SpeechRecognizer`）も TTS（`SpeechSynthesizer`）も同じ書き方です。キー認証なら `SpeechConfig(subscription=<キー>, region=<リージョン>)` です。
-- **リソース ID ＋トークン（`aad#<リソースID>#<トークン>`）**：SDK が Entra ID に直接対応していない場面（REST など）で使う古い書き方です。このサンプルでは使いません。
+- **リソース ID ＋トークン（`aad#<リソースID>#<トークン>`）**：`token_credential` に対応していない場面（REST や一部の SDK 呼び出し）で使う書き方です。このサンプルでは使いません。
 - **カスタムドメインは後から変更できない**：キーレスの前提なので、リソースを作るときに付けます。
-- **`recognize_once()` は1発話だけ**。長い音声や会議の文字起こしは連続認識やバッチ文字起こしを使います。
+- **`recognize_once()` は1発話だけ**（無音で区切られるか、最長約30秒）。長い音声や会議の文字起こしは連続認識やバッチ文字起こしを使います。
 - 音声の入出力は `AudioConfig(filename=…)`／`AudioOutputConfig(filename=…)` でファイルにも、既定のマイク・スピーカーにもできます。
 
 ## つまずき
-- **401 / 403**：ロールが足りない。Foundry リソースに **Cognitive Services Speech User** を付けて、反映まで数分待つ。エンドポイントがカスタムドメインになっているかも確かめる。
+- **401 / 403**：401 はトークンや接続先（カスタムドメインか・`az login`）、403 はロールの不足を疑う。まず **Foundry User** が付いているかを確かめ、それでも通らなければ **Cognitive Services Speech User** を付けて、反映まで数分待つ。
 - **STT が 400（WebSocket upgrade failed）**：`SPEECH_ENDPOINT` がリージョン名のエンドポイントになっている（手順9）。
 - **NoMatch**：音声を聞き取れなかった。`input.wav` が無音でないか、言語（`ja-JP`）が合っているかを確かめる。
 - **LLM が 404 DeploymentNotFound**：`MODEL_DEPLOYMENT` はカタログ名ではなく「デプロイ名」。
