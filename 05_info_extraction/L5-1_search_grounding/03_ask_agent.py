@@ -77,7 +77,7 @@ try:
         print(f"AI> {resp.output_text.strip()}")
         print(f"[引用] {len(cites)} 件 {sorted(set(cites))}")
 except (HttpResponseError, APIStatusError) as e:
-    # 403/400 "Access denied" は、手順5のロール（Foundry リソースのマネージド ID → Search）の不足か未反映
+    # 400 "Access denied" は、手順5のロール（プロジェクトのマネージド ID → Search）の不足か未反映
     body = getattr(e, "body", None)
     msg = body.get("message") if isinstance(body, dict) else None
     print(f"エラー: {e.status_code} {(msg or str(e.message)).splitlines()[0][:160]}")
