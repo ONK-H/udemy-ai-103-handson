@@ -1,6 +1,6 @@
 """L5-1 実践(1/3): スキルセットでエンリッチした AI Search インデックスを作る。
 
-Text Split（チャンク化）+ Azure OpenAI Embedding（ベクトル化）= 統合ベクトル化（integrated vectorization）。
+統合ベクトル化 = 取り込み時の Text Split + Azure OpenAI Embedding と、クエリ時の vectorizer の両方を Search に任せること。
 データソース → スキルセット → インデックス → インデクサーの4つをコードで作り、取り込みの完了を待つ。
 認証はキーレス（az login + DefaultAzureCredential、検索サービスのマネージド ID）。
 
