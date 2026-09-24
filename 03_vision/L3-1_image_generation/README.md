@@ -84,7 +84,7 @@ az cognitiveservices account deployment create `
   --sku-name GlobalStandard --sku-capacity 3 `
   --query "{name:name, model:properties.model.name, sku:sku.name, state:properties.provisioningState}" -o table
 ```
-`Succeeded` になれば完了です。`gpt-image-2` は一般提供（GA）で、利用申請は要りません。Global Standard のデプロイは、置いてあるだけでは課金されません（生成した枚数に応じた従量課金）。
+`Succeeded` になれば完了です。`gpt-image-2` は一般提供（GA）で、利用申請は要りません。Global Standard のデプロイは、置いてあるだけでは課金されません（使った分だけの従量課金で、画像のサイズや品質によって1枚あたりの額が変わります）。
 
 ### 5. 自分に Foundry User を割り当てる
 ```powershell
@@ -98,7 +98,7 @@ az role assignment list --assignee $MY_ID --scope $ACCOUNT_ID --include-inherite
   --query "[].roleDefinitionName" -o tsv
 ```
 - CLI で作ったリソースには、作った人にも推論のロールは自動では付きません。**Foundry User**（旧 Azure AI User。改称の途中なので GUID で指定）を付けます。
-- 一覧に `Foundry User` が出れば OK です（上位のスコープから継承したロールも並びます）。反映には最大5分ほどかかることがあります。
+- 一覧に `Foundry User` が出れば OK です（上位のスコープから継承したロールも並びます）。反映には数分、長いと10分ほどかかることがあります。
 
 ### 6. 接続先（リソースの `/openai/v1/`）を取得する
 ```powershell
@@ -181,7 +181,7 @@ az cognitiveservices account purge --name $ACCOUNT --resource-group $RG --locati
 
 ## つまずき
 - **`エラー: ... 404 ...`**：`FOUNDRY_OPENAI_BASE_URL` がプロジェクトのエンドポイントになっていないか確認してください。リソースの `/openai/v1/` 形式が必要です。デプロイ名（`IMAGE_MODEL`）の打ち間違いでも 404 になります。
-- **`エラー: ... 401 ...` / `403 ...`**：手順5のロールの反映待ちか、`az login` の切れです。5分ほど待って再実行してください。
+- **`エラー: ... 401 ...` / `403 ...`**：手順5のロールの反映待ちか、`az login` の切れです。ロールの反映には最大10分ほどかかるので、少し待って再実行してください。
 - **`エラー: ... content_filter ...`**：プロンプトがコンテンツフィルターに引っかかっています。穏当な内容に変えてください。
 - **編集結果の中央が黒く塗りつぶされる**：編集プロンプトが短すぎる可能性があります。「マスクの範囲に何を描くか」を具体的に書いてください。
 - **手順4で `InsufficientQuota`**：対象リージョンの画像生成モデルのクォータが足りません（最下位ティアには割り当てがありません）。クォータ増加申請が必要です。
