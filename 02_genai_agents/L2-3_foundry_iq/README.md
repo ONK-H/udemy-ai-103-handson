@@ -3,7 +3,7 @@
 Azure AI Search に **ナレッジソース**（Blob の文書）と **ナレッジベース**を作り、それを **MCP ツール**としてエージェントに付けて、文書に基づいて答えさせるハンズオンです。Foundry IQ の「ナレッジソース → ナレッジベース → エージェント」の3段を、コマンドとコードで1つずつ組み立てます。
 
 > 認証は**キーレス**（`az login` ＋ `DefaultAzureCredential` ＋ 各サービスのマネージド ID）。API キーは使いません。
-> ナレッジベースの LLM によるクエリ計画・推論の強さ、プロジェクト接続の `RemoteTool` は**プレビュー**の機能です（API バージョン `2026-08-01-preview` / `2025-10-01-preview`）。
+> ナレッジベースの MCP エンドポイント、LLM によるクエリ計画・推論の強さ、プロジェクト接続の `RemoteTool` は**プレビュー**の機能です（API バージョン `2026-08-01-preview` / `2025-10-01-preview`）。
 
 ## ファイル構成
 | ファイル | 役割 |
@@ -19,7 +19,7 @@ Azure AI Search に **ナレッジソース**（Blob の文書）と **ナレッ
 ## 前提
 - L0-3（Hello, Foundry）を終えていること（講座共通のリソースグループ `rg-ai103`・Foundry リソース・プロジェクト `ai103-project`・Foundry User ロール・`gpt-5.4` のデプロイ）。
 - `az login` 済み ／ Python 3.11+
-- ロールを付けるので、サブスクリプション（またはリソースグループ）の **Owner** か **User Access Administrator** が要ります。
+- 新しいリソースグループを作ってロールを付けるので、**サブスクリプション**の **Owner** か **User Access Administrator** が要ります（`rg-ai103` だけの Owner では足りません）。
 - **費用**：Azure AI Search の Basic は、**置いておくだけで時間単位の課金**があります（Free はマネージド ID を使えないので、この構成では使えません）。ほかは推論と埋め込みのトークン代だけです。
 - このハンズオンで作る Search とストレージは、後の「検索パイプラインをエージェントにつなぐ」ハンズオン（`05_info_extraction/L5-1_search_grounding`）でも使います。**続けて進めるなら残し、やめるなら手順12で消します**。
 
@@ -132,7 +132,7 @@ az role assignment list --scope $SEARCH_ID --query "[].{role:roleDefinitionName,
 | Search のマネージド ID | Foundry リソース | Cognitive Services User | 埋め込みモデルと、クエリ計画の LLM を呼ぶ |
 | プロジェクトのマネージド ID | Search | Search Index Data Reader | エージェントがナレッジベースを検索する（手順10の接続が使う） |
 
-最後の一覧に、Search にかかる3つのロール（Search Service Contributor・Search Index Data Contributor・Search Index Data Reader）が並べばOKです。**ロールの反映には5分ほどかかる**ことがあるので、少し待ってから手順8に進みます。
+最後の一覧に、Search にかかる3つのロール（Search Service Contributor・Search Index Data Contributor・Search Index Data Reader）が並べばOKです。**ロールの反映には5〜10分ほどかかる**ことがあるので、少し待ってから手順8に進みます。
 > Foundry の RBAC のページは「Foundry では Cognitive Services で始まるロールを付けない」と案内していますが、Azure AI Search のナレッジソース・ナレッジベースのページは、Search のマネージド ID に **Cognitive Services User** を付けるよう案内しています。ここは Search の案内に従っています。
 
 ### 6. 仮想環境を作って依存を入れる
@@ -166,7 +166,7 @@ MCP エンドポイント：https://ai103-search-<数字>.search.windows.net/kno
 - ①：Blob のナレッジソースを作ると、Search が **データソース・スキルセット・インデックス・インデクサー**の4つを自動で作り、文書を取り込みます（チャンク化・ベクトル化）。
 - ②：取り込み（インデクサーの実行）が終わるまで、10秒おきに状態を見ます。文書1つなら数十秒で終わります。
 - ③：ナレッジベースはナレッジソースを束ね、**クエリ計画に使う LLM**（`gpt-5.4`）と**推論の強さ**（`low`）を決めます。
-- 403 が出たら、手順5のロールがまだ反映されていません。数分待って実行し直します。
+- 403 が出たら、手順5のロールがまだ反映されていない可能性があります。数分待って実行し直します（それでも出るなら、手順3の `--auth-options aadOrApiKey` を確認）。
 
 ### 9. ナレッジベースの中で何が起きるかを見る
 ```powershell
@@ -181,7 +181,7 @@ python kb_retrieve.py
 [推論の強さ] low  推論トークン 913
 [根拠] 1 チャンク / 参照 1 件（エージェントにはこの抜き出しが渡る）
 ```
-2つの話題を含む質問を、ナレッジベースの LLM が**複数のサブクエリに分けて**検索しています（クエリ計画）。サブクエリの数と文面は実行のたびに変わります。エージェントのツール（手順11）も、裏ではこの retrieve を呼んでいます。
+ナレッジベースの LLM が、1つの質問から**言い換えたサブクエリを作り、並行して**検索しています（クエリ計画）。今回は話題ごとには分かれていません。サブクエリの数と文面は実行のたびに変わります。エージェントのツール（手順11）も同じナレッジベースを検索しますが、MCP の結果には `activity` や `references` が付かないので、中身はこの手順で確かめます。
 
 ### 10. プロジェクトに MCP 接続（RemoteTool）を作る
 ```powershell
@@ -215,7 +215,7 @@ AI> 分かりません。製品情報には重さの記載がありません【1
 
 後片付け: エージェント 0 件が残っています
 ```
-- `mcp_call` は、エージェントがナレッジベースのツール `knowledge_base_retrieve` を呼んだ記録です。エージェントが渡すのは `query_variants`（検索したい文）で、サブクエリへの分解はナレッジベースの中で行われます（手順9）。
+- `mcp_call` は、エージェントがナレッジベースのツール `knowledge_base_retrieve` を呼んだ記録です。エージェントのモデルが渡すのは `query_variants`（検索したい文）で、そこから先の検索のしかたはナレッジベースの推論の強さで決まります（手順9）。
 - `【…†source】` は引用の印です。文書に答えが無い質問でも、検索で文書が見つかれば引用が付くことがあります。
 - 文面は実行のたびに変わります。自分の質問は `python main.py "型番は？"` のように渡します。
 - 403 が出たら、プロジェクトのマネージド ID の Search Index Data Reader（手順5）がまだ反映されていません。
@@ -241,16 +241,16 @@ az group delete --name $SRG --yes --no-wait
 | 症状 | 原因と対処 |
 |---|---|
 | 手順4で `AuthorizationPermissionMismatch` | 自分の Storage Blob Data Contributor がまだ反映されていない。1〜2分待って再実行 |
-| 手順8で 403 | 自分の Search Service Contributor / Search Index Data Contributor が未反映。数分待つ |
+| 手順8で 403 | 自分の Search Service Contributor / Search Index Data Contributor が未反映の可能性。5〜10分待つ。それでも出るなら Search を `--auth-options aadOrApiKey` で作ったかを確認 |
 | 手順8の取り込みで失敗が1件以上 | Search のマネージド ID に Storage Blob Data Reader（ストレージ）か Cognitive Services User（Foundry）が無い |
 | 手順11で 403 / ツールが呼ばれない | プロジェクトのマネージド ID に Search Index Data Reader が無い（または未反映）。`agent_instructions.txt` の「ツールを使って」も確認 |
 | 手順11で 400 / 404 | MCP エンドポイントの Search 名・ナレッジベース名・API バージョン（`2026-08-01-preview`）を確認 |
 
 ## 試験の論点
 - Foundry IQ は **ナレッジソース → ナレッジベース → エージェント**の3段。ナレッジベースは複数のエージェントで共有できる再利用可能な部品。
-- エージェントからは **MCP ツール**（`knowledge_base_retrieve`。Agent Service で使える唯一のツール）として呼ぶ。認証は **RemoteTool** のプロジェクト接続（プロジェクトのマネージド ID）。
+- エージェントからは **MCP ツール**（`knowledge_base_retrieve`。現時点で Foundry Agent Service から使える唯一のツール）として呼ぶ。認証は **RemoteTool** のプロジェクト接続（プロジェクトのマネージド ID）。
 - ロール：プロジェクトの MI → Search に **Search Index Data Reader**、Search の MI → Foundry に **Cognitive Services User**（ナレッジベースが LLM を使うとき）。
-- 推論の強さ（`minimal`／`low`／`medium`）：`minimal` は LLM を使わずクエリ計画をしない。`low` 以上で LLM がクエリをサブクエリに分ける。
-- ユーザーごとの権限を効かせたいときは、MCP ツールの `headers` に `x-ms-query-source-authorization` を置き、**structured inputs** でユーザーのトークンをリクエストごとに渡す。
+- 推論の強さ（`minimal`／`low`／`medium`／プレビューの `auto`）：`minimal` は LLM を使わずクエリ計画をしない。`low` 以上で LLM がクエリをサブクエリに分ける。`medium` は結果が足りなければ1回だけ検索し直す。`auto` は軽い検索から始め、足りなければ LLM の計画へ進む。
+- ユーザーごとの権限（プレビュー）を効かせるには、取り込み時に権限メタデータ（`ingestionPermissionOptions`）を入れ、MCP ツールの `headers` に `x-ms-query-source-authorization` を置いて、**structured inputs** でユーザーのトークンをリクエストごとに渡す。**ヘッダーが無いと絞り込まれずに全件返る**。ユーザーのトークンはプロジェクトのマネージド ID とは別物。
 
 参照：https://learn.microsoft.com/azure/foundry/agents/how-to/foundry-iq-connect ／ https://learn.microsoft.com/azure/search/agentic-knowledge-source-how-to-blob ／ https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base ／ https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-retrieve
