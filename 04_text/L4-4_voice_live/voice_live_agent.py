@@ -79,7 +79,7 @@ async def send_audio(connection) -> None:
     for i in range(0, len(pcm), CHUNK):
         await connection.input_audio_buffer.append(audio=base64.b64encode(pcm[i:i + CHUNK]).decode())
         await asyncio.sleep(0.02)
-    print(f"  → 音声を送り終えました（{len(pcm) // CHUNK} 回に分けて送信）")
+    print(f"  → 音声を送り終えました（{(len(pcm) + CHUNK - 1) // CHUNK} 回に分けて送信）")
 
 
 async def talk() -> None:
